@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><title>Loading job data...</title></head>
+<body>
+<script>
+const draft = {
+  docType: 'quote',
+  formValues: {
+    docNumber: 'RPS-Q-0001',
+    docDate: new Date().toISOString().split('T')[0],
+    validUntil: (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })(),
+    depositPct: '30',
+    quoteDepositOverride: '2000',
+    clientName: 'Ken',
+    clientAddress: '5 Amanda Drive\nCamillo WA 6111',
+    clientPhone: '0418 927 415',
+    clientEmail: 'gtrken@hotmail.com',
+    jobTitle: 'Skillion Raised Steel Patio Installation',
+    jobSite: '5 Amanda Drive, Camillo WA 6111',
+    jobDescription: 'Supply and installation of a skillion-style raised steel patio roof designed to square off with the existing roofline. Freestanding structure (not attached to house), positioned at gutter height with a single-slope fall to the right side.\n\nCustom L-shaped legs on the right-hand side to maximise clearance at the boundary fence. Open-span design with no centre posts to accommodate 3-car clearance underneath. Structure raised to 3.2m height.\n\nIrregular L-shaped footprint, approximately 56.3 m\u00B2 (7.55m \u00D7 7.6m). All Colorbond sheeting in Classic Cream. All works to comply with local council requirements. Council approval and engineering documentation included in this quote.',
+    notes: 'L-shape legs on right side up to fence line. Structure tilted to the right. No posts in middle for 3-car clearance. Raised height: 3.2m.',
+    terms: '\u2022 This quote is valid for 30 days from the date of issue.\n\u2022 A deposit of $2,000 is required to confirm your booking and lock in your start date.\n\u2022 Remaining balance is due on completion of works.\n\u2022 Prices include GST where applicable.\n\u2022 Any variations to the scope of works will require written approval and will be quoted separately.\n\u2022 Exclusions: This quote does not include electrical work, removal of existing structures, or any works not explicitly stated above.\n\u2022 To accept this quote, please sign and return a copy along with the deposit payment.',
+    depositQuoteRef: '',
+    depositAmountOverride: '',
+    finalQuoteRef: '',
+    depositPaid: '0',
+    contractStructure: 'Patio (Skillion, Raised, Freestanding)',
+    contractDimensions: '7.55m \u00D7 7.6m (~56.3 m\u00B2) \u2014 Irregular L-shape',
+    contractMaterial: 'Steel & Colorbond',
+    contractColour: 'Classic Cream',
+    contractGroundPrep: 'Yes',
+    contractCouncil: 'Yes \u2014 handled by Contractor, included in price',
+    contractEstStart: 'Within 2\u20133 weeks after council approval',
+    contractEstDuration: '3\u20134 working days',
+    contractWarranty: '10-year structural warranty',
+    contractTotalPrice: '17820',
+    contractDepositAmount: '2000',
+    contractPaymentMethod: 'Bank Transfer',
+  },
+  lineItems: [
+    { id: 1, description: 'Colorbond roofing sheets \u2014 Classic Cream (~56 m\u00B2)', qty: 1, unit: 'lot', price: 3200 },
+    { id: 2, description: 'Steel framework \u2014 posts, beams, purlins, brackets, fixings', qty: 1, unit: 'lot', price: 4500 },
+    { id: 3, description: 'Flashings, guttering & accessories', qty: 1, unit: 'lot', price: 450 },
+    { id: 4, description: 'Concrete footings \u2014 freestanding structure at 3.2m height', qty: 6, unit: 'ea', price: 280 },
+    { id: 5, description: 'Ground preparation & site cleanup', qty: 1, unit: 'lot', price: 350 },
+    { id: 6, description: 'Installation labour (3\u20134 working days)', qty: 1, unit: 'lot', price: 4820 },
+    { id: 7, description: 'Council approval & engineering documentation', qty: 1, unit: 'lot', price: 1200 },
+  ],
+  nextLineId: 8,
+  includeGst: true,
+  markAsPaid: false,
+  paidDate: '',
+  contractLinkLineItems: false,
+};
+
+localStorage.setItem('rps-draft', JSON.stringify(draft));
+
+const clients = JSON.parse(localStorage.getItem('rps-saved-clients') || '[]');
+if (!clients.find(c => c.name === 'Ken')) {
+  clients.push({
+    name: 'Ken',
+    address: '5 Amanda Drive\nCamillo WA 6111',
+    phone: '0418 927 415',
+    email: 'gtrken@hotmail.com',
+  });
+  localStorage.setItem('rps-saved-clients', JSON.stringify(clients));
+}
+
+window.location.href = '/';
+</script>
+<p>Loading job data...</p>
+</body>
+</html>

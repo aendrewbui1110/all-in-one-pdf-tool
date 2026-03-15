@@ -1,0 +1,14 @@
+{
+    "name": "psp-invoice-generator",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Perth Steel Patios — Invoice & Quote Generator",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "devDependencies": {
+        "vite": "^6.0.0"
+    }
+}
