@@ -525,22 +525,9 @@ function bindEvents() {
   const breakdownBtn = document.getElementById('btn-generate-breakdown');
   if (breakdownBtn) {
     breakdownBtn.addEventListener('click', () => {
-      const totalInput = parseFloat(document.getElementById('breakdown-total').value) || 0;
-      if (totalInput <= 0) {
-        showToast('Enter a total cost first', 'error');
-        return;
-      }
-
-      // Subtract council costs if PSP is handling them — they get added as separate line items
-      const drawings = document.getElementById('council-drawings')?.value || 'none';
-      const lodgement = document.getElementById('council-lodgement')?.value || 'none';
-      let councilCost = 0;
-      if (drawings === 'psp') councilCost += COUNCIL_DRAWINGS_PRICE;
-      if (lodgement === 'psp') councilCost += COUNCIL_LODGEMENT_PRICE;
-
-      const patioTotal = totalInput - councilCost;
+      const patioTotal = parseFloat(document.getElementById('breakdown-total').value) || 0;
       if (patioTotal <= 0) {
-        showToast('Total must be more than council costs ($' + councilCost + ')', 'error');
+        showToast('Enter the patio cost first', 'error');
         return;
       }
 
@@ -554,13 +541,25 @@ function bindEvents() {
         lineItems.push({ id: nextLineId++, ...item });
       });
 
-      // Re-add council line items on top
+      // Add council line items on top (if PSP is handling)
       syncCouncilLineItems();
 
       recalculate();
       updatePreview();
       debouncedSave();
-      showToast(`Line items generated — $${patioTotal.toFixed(2)} patio + $${councilCost.toFixed(2)} council = $${totalInput.toFixed(2)}`);
+
+      // Calculate council add-on for toast
+      const drawings = document.getElementById('council-drawings')?.value || 'none';
+      const lodgement = document.getElementById('council-lodgement')?.value || 'none';
+      let councilCost = 0;
+      if (drawings === 'psp') councilCost += COUNCIL_DRAWINGS_PRICE;
+      if (lodgement === 'psp') councilCost += COUNCIL_LODGEMENT_PRICE;
+
+      if (councilCost > 0) {
+        showToast(`$${patioTotal.toFixed(2)} patio + $${councilCost.toFixed(2)} council = $${(patioTotal + councilCost).toFixed(2)} total`);
+      } else {
+        showToast(`Line items generated from $${patioTotal.toFixed(2)}`);
+      }
     });
   }
 
