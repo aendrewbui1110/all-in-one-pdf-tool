@@ -530,20 +530,37 @@ function bindEvents() {
         showToast('Enter a total cost first', 'error');
         return;
       }
-      const style = document.getElementById('breakdown-style').value;
-      const items = distributePrice(totalInput, style);
 
-      // Replace existing line items
+      // Subtract council costs if PSP is handling them — they get added as separate line items
+      const drawings = document.getElementById('council-drawings')?.value || 'none';
+      const lodgement = document.getElementById('council-lodgement')?.value || 'none';
+      let councilCost = 0;
+      if (drawings === 'psp') councilCost += COUNCIL_DRAWINGS_PRICE;
+      if (lodgement === 'psp') councilCost += COUNCIL_LODGEMENT_PRICE;
+
+      const patioTotal = totalInput - councilCost;
+      if (patioTotal <= 0) {
+        showToast('Total must be more than council costs ($' + councilCost + ')', 'error');
+        return;
+      }
+
+      const style = document.getElementById('breakdown-style').value;
+      const items = distributePrice(patioTotal, style);
+
+      // Replace existing line items with patio breakdown
       lineItems = [];
       nextLineId = 1;
       items.forEach(item => {
         lineItems.push({ id: nextLineId++, ...item });
       });
-      renderLineItems();
+
+      // Re-add council line items on top
+      syncCouncilLineItems();
+
       recalculate();
       updatePreview();
       debouncedSave();
-      showToast(`Line items generated from $${totalInput.toFixed(2)}`);
+      showToast(`Line items generated — $${patioTotal.toFixed(2)} patio + $${councilCost.toFixed(2)} council = $${totalInput.toFixed(2)}`);
     });
   }
 
