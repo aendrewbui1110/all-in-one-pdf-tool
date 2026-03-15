@@ -8,6 +8,36 @@ import { supabase } from './supabase.js';
 
 const logoUrl = '/logo.svg';
 
+// ── Dev Mode ──
+// When true, all Supabase writes are skipped (no documents, clients, or counters saved to DB)
+// Toggle via the DEV button in the header or set in localStorage
+let devMode = localStorage.getItem('psp-dev-mode') !== 'false'; // defaults to ON during development
+
+function isDevMode() { return devMode; }
+
+function toggleDevMode() {
+  devMode = !devMode;
+  localStorage.setItem('psp-dev-mode', devMode);
+  const btn = document.getElementById('btn-dev-mode');
+  if (btn) {
+    btn.classList.toggle('dev-mode-active', devMode);
+    btn.title = devMode ? 'Dev Mode ON — Supabase writes disabled' : 'Dev Mode OFF — Supabase writes enabled';
+  }
+  const indicator = document.getElementById('dev-mode-indicator');
+  if (indicator) indicator.style.display = devMode ? '' : 'none';
+  showToast(devMode ? 'Dev Mode ON — database writes disabled' : 'Dev Mode OFF — database writes enabled');
+}
+
+// ── Local fallback counters (for dev mode) ──
+let localCounters = { quote: 1, deposit: 1, final: 1, contract: 1 };
+
+function generateLocalDocNumber(type) {
+  const prefixes = { quote: 'PSP-Q', deposit: 'PSP-DEP', final: 'PSP-INV', contract: 'PSP-CON' };
+  const prefix = prefixes[type] || 'PSP';
+  const num = String(localCounters[type] || 1).padStart(4, '0');
+  return `${prefix}-${num}`;
+}
+
 // ── Business Details ──
 const BUSINESS = {
   name: 'Perth Steel Patios',
@@ -134,6 +164,7 @@ let nextLineId = 1;
 // ═══════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initDevMode();
   initDocDate();
   await initDocNumber();
   initTerms();
@@ -146,6 +177,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Show recovery banner if a draft exists
   showDraftRecoveryBanner();
 });
+
+function initDevMode() {
+  // Add DEV mode toggle button to header
+  const headerActions = document.querySelector('.header-actions');
+  if (!headerActions) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'btn-dev-mode';
+  btn.className = 'btn-ghost btn-dev-mode' + (devMode ? ' dev-mode-active' : '');
+  btn.title = devMode ? 'Dev Mode ON — Supabase writes disabled' : 'Dev Mode OFF — Supabase writes enabled';
+  btn.innerHTML = `<span class="dev-badge">DEV</span>`;
+  btn.addEventListener('click', toggleDevMode);
+  headerActions.insertBefore(btn, headerActions.firstChild);
+
+  // Add persistent indicator bar
+  const indicator = document.createElement('div');
+  indicator.id = 'dev-mode-indicator';
+  indicator.className = 'dev-mode-indicator';
+  indicator.textContent = 'DEV MODE — Database writes disabled';
+  indicator.style.display = devMode ? '' : 'none';
+  document.body.insertBefore(indicator, document.body.firstChild);
+}
 
 function initDocDate() {
   const today = new Date().toISOString().split('T')[0];
@@ -176,6 +229,7 @@ function generateFallbackDocNumber(type) {
 }
 
 async function peekNextDocNumber(type) {
+  if (isDevMode()) return generateLocalDocNumber(type);
   const { data, error } = await supabase
     .from('doc_counters')
     .select('counter')
@@ -189,6 +243,11 @@ async function peekNextDocNumber(type) {
 }
 
 async function claimNextDocNumber(type) {
+  if (isDevMode()) {
+    const num = generateLocalDocNumber(type);
+    localCounters[type]++;
+    return num;
+  }
   const { data, error } = await supabase.rpc('get_next_doc_number', { p_type: type });
   if (error) {
     console.error('Failed to claim doc number:', error);
@@ -520,7 +579,18 @@ async function convertTo(targetType) {
 // CLIENT HISTORY — Supabase
 // ══════════════════════════════════════
 
+// ── Local client fallback (for dev mode) ──
+function loadLocalClients() {
+  try { return JSON.parse(localStorage.getItem('psp-saved-clients') || '[]'); }
+  catch { return []; }
+}
+
+function saveLocalClients(clients) {
+  localStorage.setItem('psp-saved-clients', JSON.stringify(clients));
+}
+
 async function fetchClients() {
+  if (isDevMode()) return loadLocalClients();
   const { data, error } = await supabase
     .from('clients')
     .select('*')
@@ -536,7 +606,7 @@ async function populateClientDropdown() {
   select.innerHTML = '<option value="">Load saved client...</option>';
   clients.forEach(c => {
     const opt = document.createElement('option');
-    opt.value = c.id;
+    opt.value = isDevMode() ? c.name : c.id;
     opt.textContent = c.name;
     select.appendChild(opt);
   });
@@ -553,6 +623,16 @@ async function saveCurrentClient() {
     email: document.getElementById('client-email').value,
   };
 
+  if (isDevMode()) {
+    const clients = loadLocalClients();
+    const idx = clients.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
+    if (idx >= 0) { clients[idx] = clientData; showToast(`Updated: ${name}`); }
+    else { clients.push(clientData); showToast(`Saved: ${name}`); }
+    saveLocalClients(clients);
+    await populateClientDropdown();
+    return clientData;
+  }
+
   // Check if client with this name already exists
   const { data: existing } = await supabase
     .from('clients')
@@ -562,7 +642,6 @@ async function saveCurrentClient() {
 
   let result;
   if (existing) {
-    // Update existing client
     const { data, error } = await supabase
       .from('clients')
       .update({ ...clientData, updated_at: new Date().toISOString() })
@@ -572,7 +651,6 @@ async function saveCurrentClient() {
     result = data?.[0];
     showToast(`Updated: ${name}`);
   } else {
-    // Insert new client
     const { data, error } = await supabase
       .from('clients')
       .insert(clientData)
@@ -588,6 +666,22 @@ async function saveCurrentClient() {
 
 async function loadClient(clientId) {
   if (!clientId) return;
+
+  if (isDevMode()) {
+    const clients = loadLocalClients();
+    const client = clients.find(c => c.name === clientId);
+    if (!client) { showToast('Client not found', 'error'); return; }
+    document.getElementById('client-name').value = client.name;
+    document.getElementById('client-address').value = client.address || '';
+    document.getElementById('client-phone').value = client.phone || '';
+    document.getElementById('client-email').value = client.email || '';
+    recalculate();
+    updatePreview();
+    debouncedSave();
+    showToast(`Loaded: ${client.name}`);
+    return;
+  }
+
   const { data: client, error } = await supabase
     .from('clients')
     .select('*')
@@ -1480,6 +1574,7 @@ async function downloadPDF() {
 // ══════════════════════════════════════
 
 async function saveDocumentToSupabase(docNumber, formValues, type) {
+  if (isDevMode()) return; // Skip DB writes in dev mode
   const includeGst = document.getElementById('include-gst').checked;
   const subtotal = lineItems.reduce((sum, item) => sum + (item.qty || 0) * (item.price || 0), 0);
   const gst = includeGst ? subtotal * 0.10 : 0;
