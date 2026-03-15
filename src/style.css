@@ -2203,6 +2203,66 @@ body {
   }
 }
 
+/* ── Price Breakdown ── */
+.form-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.input-prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+#breakdown-total {
+  padding-left: 28px;
+}
+
+.btn-generate-breakdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-generate-breakdown:hover {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── Status Code ── */
+.status-code-select {
+  width: 70px !important;
+  min-width: 70px;
+  text-align: center;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+
+#status-code-group {
+  flex: 0 0 auto;
+  max-width: 100px;
+}
+
 /* ── Dev Mode ── */
 .dev-mode-indicator {
   background: var(--accent);

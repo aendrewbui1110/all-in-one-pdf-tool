@@ -1,5 +1,5 @@
 import './style.css';
-import { supabase } from './supabase.js';
+import { supabase, supabaseConfigured } from './supabase.js';
 
 /* ═══════════════════════════════════════════════════════════════
    Perth Steel Patios — Document Generator
@@ -13,7 +13,7 @@ const logoUrl = '/logo.svg';
 // Toggle via the DEV button in the header or set in localStorage
 let devMode = localStorage.getItem('psp-dev-mode') !== 'false'; // defaults to ON during development
 
-function isDevMode() { return devMode; }
+function isDevMode() { return devMode || !supabaseConfigured; }
 
 function toggleDevMode() {
   devMode = !devMode;
@@ -90,6 +90,105 @@ const SCOPE_TEMPLATES = {
 
   carport: `Supply and installation of a freestanding steel **carport** structure designed to provide covered parking and vehicle protection. Structure built with steel framework including posts, beams, and purlins, finished with Colorbond roofing sheets.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable. All works to comply with local council requirements.`,
 };
+
+// ══════════════════════════════════════
+// PRICE BREAKDOWN — Auto-distribute total across line items
+// Andrew enters total cost, system splits it into professional line items
+// Percentages are configurable — adjust to match your real cost structure
+// ══════════════════════════════════════
+
+const PRICE_BREAKDOWN_PRESETS = {
+  skillion: [
+    { description: 'Labour — installation & site works', pct: 32 },
+    { description: 'Steel framework (posts, beams, purlins)', pct: 22 },
+    { description: 'Colorbond roofing sheets', pct: 15 },
+    { description: 'Concrete footings', pct: 10 },
+    { description: 'Guttering & downpipes', pct: 7 },
+    { description: 'Flashings & weatherproofing', pct: 5 },
+    { description: 'Bolts, brackets & fixings', pct: 4 },
+    { description: 'Corner mould & trim', pct: 3 },
+    { description: 'Site cleanup & waste removal', pct: 2 },
+  ],
+  gable: [
+    { description: 'Labour — installation & site works', pct: 30 },
+    { description: 'Steel framework (posts, beams, rafters, purlins)', pct: 23 },
+    { description: 'Colorbond roofing sheets', pct: 14 },
+    { description: 'Gable infill panels', pct: 5 },
+    { description: 'Concrete footings', pct: 10 },
+    { description: 'Guttering & downpipes', pct: 6 },
+    { description: 'Flashings & weatherproofing', pct: 4 },
+    { description: 'Bolts, brackets & fixings', pct: 4 },
+    { description: 'Corner mould & trim', pct: 2 },
+    { description: 'Site cleanup & waste removal', pct: 2 },
+  ],
+  flat: [
+    { description: 'Labour — installation & site works', pct: 33 },
+    { description: 'Steel framework (posts, beams, purlins)', pct: 22 },
+    { description: 'Colorbond roofing sheets', pct: 15 },
+    { description: 'Concrete footings', pct: 10 },
+    { description: 'Guttering & downpipes', pct: 7 },
+    { description: 'Flashings & weatherproofing', pct: 5 },
+    { description: 'Bolts, brackets & fixings', pct: 4 },
+    { description: 'Corner mould & trim', pct: 2 },
+    { description: 'Site cleanup & waste removal', pct: 2 },
+  ],
+  'dutch-gable': [
+    { description: 'Labour — installation & site works', pct: 30 },
+    { description: 'Steel framework (posts, beams, rafters, purlins)', pct: 22 },
+    { description: 'Colorbond roofing sheets', pct: 14 },
+    { description: 'Decorative gable infill', pct: 6 },
+    { description: 'Concrete footings', pct: 10 },
+    { description: 'Guttering & downpipes', pct: 6 },
+    { description: 'Flashings & weatherproofing', pct: 4 },
+    { description: 'Bolts, brackets & fixings', pct: 4 },
+    { description: 'Corner mould & trim', pct: 2 },
+    { description: 'Site cleanup & waste removal', pct: 2 },
+  ],
+  carport: [
+    { description: 'Labour — installation & site works', pct: 30 },
+    { description: 'Steel framework (posts, beams, purlins)', pct: 25 },
+    { description: 'Colorbond roofing sheets', pct: 15 },
+    { description: 'Concrete footings', pct: 12 },
+    { description: 'Guttering & downpipes', pct: 6 },
+    { description: 'Flashings & weatherproofing', pct: 4 },
+    { description: 'Bolts, brackets & fixings', pct: 4 },
+    { description: 'Corner mould & trim', pct: 2 },
+    { description: 'Site cleanup & waste removal', pct: 2 },
+  ],
+};
+
+function distributePrice(totalExGst, presetKey) {
+  const preset = PRICE_BREAKDOWN_PRESETS[presetKey] || PRICE_BREAKDOWN_PRESETS.skillion;
+  const items = [];
+  let remaining = totalExGst;
+
+  // Distribute with slight randomness so it doesn't look like exact percentages
+  for (let i = 0; i < preset.length; i++) {
+    const isLast = i === preset.length - 1;
+    if (isLast) {
+      // Last item gets whatever's left (avoids rounding drift)
+      items.push({ description: preset[i].description, qty: 1, unit: 'job', price: Math.round(remaining * 100) / 100 });
+    } else {
+      // Add slight variance (-2% to +2% of the item's value) for natural-looking numbers
+      const basePct = preset[i].pct / 100;
+      const variance = (Math.random() - 0.5) * 0.04 * basePct;
+      const amount = Math.round((totalExGst * (basePct + variance)) * 100) / 100;
+      items.push({ description: preset[i].description, qty: 1, unit: 'job', price: amount });
+      remaining -= amount;
+    }
+  }
+
+  return items;
+}
+
+// ══════════════════════════════════════
+// SHARED CALCULATIONS
+// ══════════════════════════════════════
+
+function calculateDepositAmount(total, depositPct, depositOverride) {
+  if (depositOverride > 0) return depositOverride;
+  return total * (depositPct / 100);
+}
 
 // ══════════════════════════════════════
 // FIELD CONFIGURATION — Single source of truth
@@ -377,6 +476,32 @@ function bindEvents() {
     }
   });
 
+  // Price breakdown generator
+  const breakdownBtn = document.getElementById('btn-generate-breakdown');
+  if (breakdownBtn) {
+    breakdownBtn.addEventListener('click', () => {
+      const totalInput = parseFloat(document.getElementById('breakdown-total').value) || 0;
+      if (totalInput <= 0) {
+        showToast('Enter a total cost first', 'error');
+        return;
+      }
+      const style = document.getElementById('breakdown-style').value;
+      const items = distributePrice(totalInput, style);
+
+      // Replace existing line items
+      lineItems = [];
+      nextLineId = 1;
+      items.forEach(item => {
+        lineItems.push({ id: nextLineId++, ...item });
+      });
+      renderLineItems();
+      recalculate();
+      updatePreview();
+      debouncedSave();
+      showToast(`Line items generated from $${totalInput.toFixed(2)}`);
+    });
+  }
+
   // Convert dropdown
   const convertBtn = document.getElementById('btn-convert');
   const convertMenu = document.getElementById('convert-menu');
@@ -591,12 +716,27 @@ function saveLocalClients(clients) {
 
 async function fetchClients() {
   if (isDevMode()) return loadLocalClients();
-  const { data, error } = await supabase
-    .from('clients')
-    .select('*')
-    .order('name');
-  if (error) { console.error('Failed to fetch clients:', error); return []; }
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .order('name');
+    if (error) throw error;
+    // Cache for offline fallback
+    try { localStorage.setItem('psp-clients-cache', JSON.stringify(data)); } catch {}
+    return data;
+  } catch (err) {
+    console.error('Failed to fetch clients:', err);
+    // Try cached data
+    try {
+      const cached = localStorage.getItem('psp-clients-cache');
+      if (cached) {
+        showToast('Using cached client list (offline)', 'error');
+        return JSON.parse(cached);
+      }
+    } catch {}
+    return [];
+  }
 }
 
 async function populateClientDropdown() {
@@ -1421,15 +1561,15 @@ function generateContractHTML() {
 // ══════════════════════════════════════
 
 function validateForm() {
-  let valid = true;
+  const errors = [];
 
-  // Client name
+  // Client name (required for all types)
   const nameGroup = document.getElementById('client-name').closest('.form-group');
   const nameMsg = document.getElementById('val-client-name');
   if (!document.getElementById('client-name').value.trim()) {
     nameGroup.classList.add('has-error');
     nameMsg.style.display = 'block';
-    valid = false;
+    errors.push('Client name is required');
   } else {
     nameGroup.classList.remove('has-error');
     nameMsg.style.display = 'none';
@@ -1440,30 +1580,52 @@ function validateForm() {
   const lineMsg = document.getElementById('val-line-items');
   if (docType !== 'contract' && !hasValidLine) {
     lineMsg.style.display = 'block';
-    valid = false;
+    errors.push('At least one line item required');
   } else {
     lineMsg.style.display = 'none';
   }
 
-  // Contract validation
-  if (docType === 'contract') {
-    const totalPrice = document.getElementById('contract-total-price').value;
-    if (!totalPrice || parseFloat(totalPrice) <= 0) {
-      showToast('Contract requires a total price', 'error');
-      valid = false;
+  // Numeric sanity checks
+  if (docType !== 'contract') {
+    const subtotal = lineItems.reduce((sum, item) => sum + (item.qty || 0) * (item.price || 0), 0);
+    const includeGst = document.getElementById('include-gst').checked;
+    const total = subtotal + (includeGst ? subtotal * 0.1 : 0);
+    const depositPct = parseFloat(document.getElementById('deposit-pct').value) || 0;
+    const depositOverride = parseFloat(document.getElementById('quote-deposit-override')?.value) || 0;
+
+    if (depositPct > 100) errors.push('Deposit % cannot exceed 100');
+    if (depositOverride > 0 && depositOverride > total && total > 0) {
+      errors.push('Fixed deposit amount exceeds total');
     }
-    const depositAmt = document.getElementById('contract-deposit-amount').value;
-    if (!depositAmt || parseFloat(depositAmt) <= 0) {
-      showToast('Contract requires a deposit amount', 'error');
-      valid = false;
+
+    if (docType === 'final') {
+      const depositPaid = parseFloat(document.getElementById('deposit-paid').value) || 0;
+      if (depositPaid > total && total > 0) {
+        errors.push('Deposit paid exceeds total amount');
+      }
     }
-    if (!document.getElementById('job-site').value.trim()) {
-      showToast('Contract requires a site address', 'error');
-      valid = false;
+
+    // Check for negative prices in line items
+    if (lineItems.some(item => item.price < 0)) {
+      errors.push('Line item prices cannot be negative');
     }
   }
 
-  return valid;
+  // Contract validation
+  if (docType === 'contract') {
+    const totalPrice = parseFloat(document.getElementById('contract-total-price').value) || 0;
+    const contractDeposit = parseFloat(document.getElementById('contract-deposit-amount').value) || 0;
+    if (totalPrice <= 0) errors.push('Contract requires a total price');
+    if (contractDeposit <= 0) errors.push('Contract requires a deposit amount');
+    if (contractDeposit > totalPrice && totalPrice > 0) errors.push('Contract deposit exceeds total price');
+    if (!document.getElementById('job-site').value.trim()) errors.push('Contract requires a site address');
+  }
+
+  if (errors.length > 0) {
+    showToast(errors[0], 'error');
+    return false;
+  }
+  return true;
 }
 
 // ══════════════════════════════════════
@@ -1500,7 +1662,7 @@ async function downloadPDF() {
 
     const opt = {
       margin: [0, 0, 10, 0],
-      filename: filename,
+      filename: 'document.pdf',
       image: { type: 'jpeg', quality: 0.95 },
       html2canvas: {
         scale: 2,
@@ -1548,17 +1710,22 @@ async function downloadPDF() {
     updatePreview();
 
     const officialFilename = `${officialDocNumber}_${v.clientName || 'Client'}.pdf`.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+    // Get PDF as blob for Supabase upload before saving locally
+    const pdfBlob = pdfDoc.output('blob');
     pdfDoc.save(officialFilename);
 
     element.style.boxShadow = origBoxShadow;
     element.style.borderRadius = origBorderRadius;
 
-    // Save document record and upload PDF to Supabase (non-blocking)
-    saveDocumentToSupabase(officialDocNumber, v, docType).catch(err =>
-      console.error('Failed to save document to Supabase:', err)
-    );
-
-    showToast(`PDF saved: ${officialFilename}`);
+    // Save document record and upload PDF to Supabase (blocking with error feedback)
+    try {
+      await saveDocumentToSupabase(officialDocNumber, v, docType, pdfBlob);
+      showToast(`PDF saved: ${officialFilename}`);
+    } catch (err) {
+      console.error('Failed to save to Supabase:', err);
+      showToast(`PDF saved locally but failed to sync to database`, 'error');
+    }
 
   } catch (error) {
     console.error('PDF generation failed:', error);
@@ -1573,8 +1740,10 @@ async function downloadPDF() {
 // SAVE DOCUMENT TO SUPABASE
 // ══════════════════════════════════════
 
-async function saveDocumentToSupabase(docNumber, formValues, type) {
+async function saveDocumentToSupabase(docNumber, formValues, type, pdfBlob) {
   if (isDevMode()) return; // Skip DB writes in dev mode
+  if (!supabaseConfigured || !supabase) return; // No Supabase connection
+
   const includeGst = document.getElementById('include-gst').checked;
   const subtotal = lineItems.reduce((sum, item) => sum + (item.qty || 0) * (item.price || 0), 0);
   const gst = includeGst ? subtotal * 0.10 : 0;
@@ -1593,7 +1762,6 @@ async function saveDocumentToSupabase(docNumber, formValues, type) {
     if (existing) {
       clientId = existing.id;
     } else {
-      // Auto-save client on document creation
       const { data: newClient } = await supabase
         .from('clients')
         .insert({
@@ -1605,15 +1773,34 @@ async function saveDocumentToSupabase(docNumber, formValues, type) {
         .select('id')
         .single();
       if (newClient) clientId = newClient.id;
-      // Refresh client dropdown in background
       populateClientDropdown();
     }
   }
 
-  // Calculate deposit amount for the record
+  // Upload PDF to Supabase Storage
+  let pdfUrl = null;
+  if (pdfBlob) {
+    const { data: fileData, error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(`${type}/${docNumber}.pdf`, pdfBlob, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+    if (uploadError) {
+      console.error('PDF upload failed:', uploadError);
+    } else {
+      pdfUrl = fileData?.path || null;
+    }
+  }
+
+  // Get status code from form (default to S=Sent on download)
+  const statusCode = document.getElementById('status-code')?.value || 'S';
+  const statusMap = { D: 'draft', S: 'sent', A: 'accepted', C: 'completed', X: 'excluded', R: 'archived' };
+
+  // Calculate deposit
   const depositPct = parseFloat(formValues.depositPct) || 0;
   const quoteDepositOverride = parseFloat(formValues.quoteDepositOverride) || 0;
-  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : total * (depositPct / 100);
+  const depositAmt = calculateDepositAmount(total, depositPct, quoteDepositOverride);
 
   // Save document record
   const { error } = await supabase
@@ -1622,20 +1809,21 @@ async function saveDocumentToSupabase(docNumber, formValues, type) {
       doc_number: docNumber,
       doc_type: type,
       client_id: clientId,
-      status: 'sent',
-      status_code: 'S',
+      status: statusMap[statusCode] || 'sent',
+      status_code: statusCode,
       doc_date: formValues.docDate || null,
       valid_until: formValues.validUntil || null,
       subtotal,
       gst,
       total,
-      deposit_amount: depositAmount > 0 ? depositAmount : null,
+      deposit_amount: depositAmt > 0 ? depositAmt : null,
       form_data: formValues,
       line_items: lineItems.filter(item => item.description || item.price > 0),
+      pdf_url: pdfUrl,
     });
 
   if (error) {
-    console.error('Failed to save document record:', error);
+    throw new Error(`Document save failed: ${error.message}`);
   }
 }
 
@@ -1685,6 +1873,7 @@ function saveDraft() {
     markAsPaid: document.getElementById('mark-as-paid').checked,
     paidDate: document.getElementById('paid-date').value,
     contractLinkLineItems: document.getElementById('contract-link-lineitems')?.checked ?? true,
+    statusCode: document.getElementById('status-code')?.value || 'D',
   };
   try {
     localStorage.setItem('psp-draft', JSON.stringify(data));
@@ -1731,6 +1920,10 @@ function loadDraft() {
     if (typeof data.contractLinkLineItems === 'boolean') {
       const linkEl = document.getElementById('contract-link-lineitems');
       if (linkEl) linkEl.checked = data.contractLinkLineItems;
+    }
+    if (data.statusCode) {
+      const statusEl = document.getElementById('status-code');
+      if (statusEl) statusEl.value = data.statusCode;
     }
 
     recalculate();
@@ -1803,7 +1996,9 @@ function showToast(message, type = 'success') {
 // ══════════════════════════════════════
 
 function formatCurrency(amount) {
-  return '$' + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const num = parseFloat(amount) || 0;
+  if (!isFinite(num)) return '$0.00';
+  return '$' + num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 function formatDateDisplay(dateStr) {

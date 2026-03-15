@@ -84,9 +84,9 @@ The full build plan is at `docs/plans/all-in-one-tool-buildplan.md`. Phases:
 
 1. ✅ Rebrand to Perth Steel Patios + remove password + fresh start
 2. ✅ Fix fresh start behaviour (restore banner, no auto-load)
-3. Supabase backend setup
-4. Migrate client/document data to Supabase
-5. Private status code system
+3. ✅ Supabase backend setup (tables, RLS, storage bucket, doc number function)
+4. ✅ Migrate client/document data to Supabase
+5. ✅ Private status code system (D/S/A/C/X/R selector, saved to DB)
 6. Quote Calculator page
 7. Agent API layer (RLS policies, Edge Functions, API docs)
 

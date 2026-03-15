@@ -138,7 +138,7 @@
                         <input type="number" id="quote-deposit-override" placeholder="e.g. 2000" step="0.01" min="0" />
                     </div>
                 </div>
-                <!-- GST toggle -->
+                <!-- Status + GST -->
                 <div class="form-row two-col" id="gst-row">
                     <div class="form-group">
                         <label class="toggle-label">
@@ -146,6 +146,17 @@
                             <span class="toggle-switch"></span>
                             Include GST (10%)
                         </label>
+                    </div>
+                    <div class="form-group" id="status-code-group">
+                        <label for="status-code">Status</label>
+                        <select id="status-code" class="status-code-select">
+                            <option value="D">D</option>
+                            <option value="S" selected>S</option>
+                            <option value="A">A</option>
+                            <option value="C">C</option>
+                            <option value="X">X</option>
+                            <option value="R">R</option>
+                        </select>
                     </div>
                 </div>
 
@@ -354,6 +365,43 @@
                     <label for="contract-payment-method">Payment Method</label>
                     <input type="text" id="contract-payment-method" value="Bank Transfer" placeholder="e.g. Bank Transfer, Cash, Card" />
                 </div>
+            </fieldset>
+
+            <!-- Price Breakdown — auto-distribute total into line items -->
+            <fieldset class="form-section" id="price-breakdown-section">
+                <legend>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                    Quick Price Breakdown
+                </legend>
+                <p class="form-hint">Enter your total cost and patio style — line items will be auto-generated.</p>
+                <div class="form-row two-col">
+                    <div class="form-group">
+                        <label for="breakdown-total">Total Cost (ex GST)</label>
+                        <div class="input-with-suffix">
+                            <span class="input-prefix">$</span>
+                            <input type="number" id="breakdown-total" placeholder="e.g. 8400" step="0.01" min="0" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="breakdown-style">Patio Style</label>
+                        <select id="breakdown-style">
+                            <option value="skillion">Skillion</option>
+                            <option value="gable">Gable</option>
+                            <option value="flat">Flat Roof</option>
+                            <option value="dutch-gable">Dutch Gable</option>
+                            <option value="carport">Carport</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" id="btn-generate-breakdown" class="btn-generate-breakdown">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 3 21 3 21 8"/>
+                        <line x1="4" y1="20" x2="21" y2="3"/>
+                    </svg>
+                    Generate Line Items
+                </button>
             </fieldset>
 
             <!-- Line Items -->
