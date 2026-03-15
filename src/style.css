@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   Reliable Patio Solutions — Document Generator
+   Perth Steel Patios — Document Generator
    Design System & Styles
    ═══════════════════════════════════════════════════════════════ */
 
@@ -1629,27 +1629,6 @@ body {
     font-size: 1rem;
   }
 
-  /* Password screen on mobile */
-  #password-box {
-    margin: 16px;
-    padding: 36px 24px;
-    border-radius: 12px;
-  }
-
-  #password-form {
-    flex-direction: column;
-  }
-
-  #password-input {
-    min-height: 50px;
-    font-size: 1rem;
-    text-align: center;
-  }
-
-  #password-submit {
-    min-height: 50px;
-    font-size: 1rem;
-  }
 }
 
 /* ── Small mobile (≤390px) ── */
@@ -1705,100 +1684,6 @@ body {
     border-radius: 0;
   }
 }
-/* ── Password Screen ── */
-#password-screen {
-  position: fixed;
-  inset: 0;
-  background: var(--bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-#password-box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 48px 40px;
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-}
-
-#password-logo {
-  margin-bottom: 20px;
-}
-
-#password-logo img {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-}
-
-#password-box h2 {
-  font-family: 'Oswald', sans-serif;
-  font-size: 1.6rem;
-  font-weight: 600;
-  color: var(--text);
-  margin: 0 0 6px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-#password-box > p {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  margin: 0 0 28px;
-}
-
-#password-form {
-  display: flex;
-  gap: 10px;
-}
-
-#password-input {
-  flex: 1;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 0.95rem;
-  padding: 10px 14px;
-  outline: none;
-  transition: border-color 0.2s;
-  font-family: 'Inter', sans-serif;
-}
-
-#password-input:focus {
-  border-color: var(--accent);
-}
-
-#password-submit {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-family: 'Inter', sans-serif;
-  white-space: nowrap;
-}
-
-#password-submit:hover {
-  background: var(--accent-hover);
-}
-
-#password-error {
-  color: var(--red);
-  font-size: 0.82rem;
-  margin: 12px 0 0;
-}
-
 /* ── Mobile Preview Drawer & Toggle ── */
 
 /* Hidden on desktop — only shown via media query */
@@ -2004,6 +1889,51 @@ body {
   flex-direction: column;
   gap: 8px;
   pointer-events: none;
+}
+
+/* ── Draft Recovery Banner ── */
+.draft-recovery-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  background: var(--accent-bg, #FFF8F0);
+  border: 1px solid var(--accent, #F7941D);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--text, #1a1a2e);
+}
+.draft-recovery-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.draft-recovery-banner .btn-restore {
+  padding: 4px 14px;
+  background: var(--accent, #F7941D);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.draft-recovery-banner .btn-restore:hover {
+  background: var(--accent-hover, #FFAA3E);
+}
+.draft-recovery-banner .btn-dismiss {
+  padding: 4px 14px;
+  background: transparent;
+  color: var(--text-muted, #666);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+.draft-recovery-banner .btn-dismiss:hover {
+  background: var(--bg-hover, #f5f5f5);
 }
 
 .toast {

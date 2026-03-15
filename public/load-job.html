@@ -5,7 +5,7 @@
 const draft = {
   docType: 'quote',
   formValues: {
-    docNumber: 'RPS-Q-0001',
+    docNumber: 'PSP-Q-0001',
     docDate: new Date().toISOString().split('T')[0],
     validUntil: (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })(),
     depositPct: '30',
@@ -52,9 +52,9 @@ const draft = {
   contractLinkLineItems: false,
 };
 
-localStorage.setItem('rps-draft', JSON.stringify(draft));
+localStorage.setItem('psp-draft', JSON.stringify(draft));
 
-const clients = JSON.parse(localStorage.getItem('rps-saved-clients') || '[]');
+const clients = JSON.parse(localStorage.getItem('psp-saved-clients') || '[]');
 if (!clients.find(c => c.name === 'Ken')) {
   clients.push({
     name: 'Ken',
@@ -62,7 +62,7 @@ if (!clients.find(c => c.name === 'Ken')) {
     phone: '0418 927 415',
     email: 'gtrken@hotmail.com',
   });
-  localStorage.setItem('rps-saved-clients', JSON.stringify(clients));
+  localStorage.setItem('psp-saved-clients', JSON.stringify(clients));
 }
 
 window.location.href = '/';

@@ -1,129 +1,24 @@
 import './style.css';
 
 /* ═══════════════════════════════════════════════════════════════
-   Reliable Patio Solutions — Document Generator
+   Perth Steel Patios — Document Generator
    Core Application Logic
    ═══════════════════════════════════════════════════════════════ */
 
-const logoUrl = '/logo.png';
-
-// ── Password Protection ──
-// NOTE: Cosmetic client-side protection only. Hash is visible in source.
-// For public hosting, implement server-side authentication.
-(function () {
-  const PWD_HASH = '5aac2fd3c0519a3c13d193360f717f70b3d7019043b59bb7d152e934370785a1';
-  const SESSION_KEY = 'rps_auth';
-  const ATTEMPT_KEY = 'rps_attempts';
-  const LOCKOUT_KEY = 'rps_lockout';
-  const MAX_ATTEMPTS = 5;
-  const LOCKOUT_MS = 15 * 60 * 1000;
-
-  const screen = document.getElementById('password-screen');
-  const input = document.getElementById('password-input');
-  const submitBtn = document.getElementById('password-submit');
-  const errorMsg = document.getElementById('password-error');
-  const appHeader = document.getElementById('app-header');
-  const docNav = document.getElementById('doc-type-nav');
-  const appMain = document.getElementById('app-main');
-
-  async function hashInput(str) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  function unlock() {
-    screen.style.display = 'none';
-    appHeader.style.display = '';
-    docNav.style.display = '';
-    appMain.style.display = '';
-    sessionStorage.setItem(SESSION_KEY, '1');
-    localStorage.removeItem(ATTEMPT_KEY);
-    localStorage.removeItem(LOCKOUT_KEY);
-  }
-
-  function isLockedOut() {
-    const lockoutUntil = parseInt(localStorage.getItem(LOCKOUT_KEY) || '0', 10);
-    return Date.now() < lockoutUntil;
-  }
-
-  function getRemainingLockout() {
-    const lockoutUntil = parseInt(localStorage.getItem(LOCKOUT_KEY) || '0', 10);
-    return Math.ceil((lockoutUntil - Date.now()) / 60000);
-  }
-
-  function showError(msg) {
-    errorMsg.textContent = msg;
-    errorMsg.style.display = 'block';
-  }
-
-  async function checkPassword() {
-    if (isLockedOut()) {
-      showError(`Too many failed attempts. Try again in ${getRemainingLockout()} minute(s).`);
-      input.value = '';
-      return;
-    }
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = '...';
-
-    await new Promise(r => setTimeout(r, 800));
-
-    const entered = input.value.trim();
-    const hash = await hashInput(entered);
-
-    if (hash === PWD_HASH) {
-      errorMsg.style.display = 'none';
-      unlock();
-    } else {
-      const attempts = parseInt(localStorage.getItem(ATTEMPT_KEY) || '0', 10) + 1;
-      localStorage.setItem(ATTEMPT_KEY, attempts);
-
-      if (attempts >= MAX_ATTEMPTS) {
-        localStorage.setItem(LOCKOUT_KEY, Date.now() + LOCKOUT_MS);
-        localStorage.removeItem(ATTEMPT_KEY);
-        showError('Too many failed attempts. Access locked for 15 minutes.');
-      } else {
-        showError(`Incorrect password. ${MAX_ATTEMPTS - attempts} attempt(s) remaining.`);
-      }
-
-      input.value = '';
-      input.focus();
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Unlock';
-    }
-  }
-
-  if (appHeader) appHeader.style.display = 'none';
-  if (docNav) docNav.style.display = 'none';
-  if (appMain) appMain.style.display = 'none';
-
-  if (isLockedOut()) {
-    showError(`Too many failed attempts. Try again in ${getRemainingLockout()} minute(s).`);
-    submitBtn.disabled = true;
-  }
-
-  if (sessionStorage.getItem(SESSION_KEY) === '1') {
-    unlock();
-  }
-
-  submitBtn.addEventListener('click', checkPassword);
-  input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') checkPassword();
-  });
-})();
+const logoUrl = '/logo.svg';
 
 // ── Business Details ──
 const BUSINESS = {
-  name: 'Reliable Patio Solutions',
-  abn: '59 164 284 722',
+  name: 'Perth Steel Patios',
+  abn: 'TBC',
   phone: '+61 448 745 597',
-  email: 'reliablepatiosolutions.wa@gmail.com',
-  website: 'reliablepatiosolutions.com.au',
+  email: 'contact@perthsteelpatios.com.au',
+  website: 'perthsteelpatios.com.au',
   bank: {
-    name: 'Commonwealth Bank',
-    bsb: '066-192',
-    accountNumber: '1058 1893',
-    accountName: 'Huy Bui',
+    name: 'TBC',
+    bsb: 'TBC',
+    accountNumber: 'TBC',
+    accountName: 'TBC',
   },
 };
 
@@ -245,14 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
   addLineItem();
   bindEvents();
   populateClientDropdown();
-
-  // Try to restore saved draft (overrides defaults)
-  const restored = loadDraft();
-  if (!restored) {
-    updatePreview();
-  }
-
+  updatePreview();
   checkQuoteExpiry();
+
+  // Show recovery banner if a draft exists
+  showDraftRecoveryBanner();
 });
 
 function initDocDate() {
@@ -278,7 +170,7 @@ function initTerms() {
 
 function loadCounters() {
   try {
-    const saved = localStorage.getItem('rps-doc-counters');
+    const saved = localStorage.getItem('psp-doc-counters');
     if (saved) return JSON.parse(saved);
   } catch (e) { /* ignore */ }
   return { quote: 1, deposit: 1, final: 1, contract: 1 };
@@ -286,13 +178,13 @@ function loadCounters() {
 
 function saveCounters() {
   try {
-    localStorage.setItem('rps-doc-counters', JSON.stringify(docCounters));
+    localStorage.setItem('psp-doc-counters', JSON.stringify(docCounters));
   } catch (e) { /* ignore */ }
 }
 
 function generateDocNumber(type) {
-  const prefixes = { quote: 'RPS-Q', deposit: 'RPS-DEP', final: 'RPS-INV', contract: 'RPS-CON' };
-  const prefix = prefixes[type] || 'RPS';
+  const prefixes = { quote: 'PSP-Q', deposit: 'PSP-DEP', final: 'PSP-INV', contract: 'PSP-CON' };
+  const prefix = prefixes[type] || 'PSP';
   const num = String(docCounters[type] || 1).padStart(4, '0');
   return `${prefix}-${num}`;
 }
@@ -624,12 +516,12 @@ function convertTo(targetType) {
 // ══════════════════════════════════════
 
 function loadSavedClients() {
-  try { return JSON.parse(localStorage.getItem('rps-saved-clients') || '[]'); }
+  try { return JSON.parse(localStorage.getItem('psp-saved-clients') || '[]'); }
   catch { return []; }
 }
 
 function saveSavedClients(clients) {
-  localStorage.setItem('rps-saved-clients', JSON.stringify(clients));
+  localStorage.setItem('psp-saved-clients', JSON.stringify(clients));
 }
 
 function populateClientDropdown() {
@@ -1016,7 +908,7 @@ function generateDocumentHTML() {
     <!-- Header -->
     <div class="doc-header">
       <div class="doc-company">
-        <img src="${logoUrl}" alt="Reliable Patio Solutions" class="doc-company-logo" />
+        <img src="${logoUrl}" alt="Perth Steel Patios" class="doc-company-logo" />
         <div class="doc-company-info">
           <div class="doc-company-name">${BUSINESS.name}</div>
           <div class="doc-company-details">
@@ -1544,10 +1436,6 @@ async function downloadPDF() {
 // ══════════════════════════════════════
 
 function newDocument() {
-  if (!confirm('Start a new document? Any unsaved changes will be lost.')) {
-    return;
-  }
-
   // Increment counter
   docCounters[docType]++;
   saveCounters();
@@ -1595,13 +1483,13 @@ function saveDraft() {
     contractLinkLineItems: document.getElementById('contract-link-lineitems')?.checked ?? true,
   };
   try {
-    localStorage.setItem('rps-draft', JSON.stringify(data));
+    localStorage.setItem('psp-draft', JSON.stringify(data));
   } catch (e) { /* ignore */ }
 }
 
 function loadDraft() {
   try {
-    const saved = localStorage.getItem('rps-draft');
+    const saved = localStorage.getItem('psp-draft');
     if (!saved) return false;
     const data = JSON.parse(saved);
 
@@ -1651,11 +1539,47 @@ function loadDraft() {
 
 function clearDraft() {
   try {
-    localStorage.removeItem('rps-draft');
+    localStorage.removeItem('psp-draft');
   } catch (e) { /* ignore */ }
 }
 
 const debouncedSave = debounce(saveDraft, 500);
+
+// ══════════════════════════════════════
+// DRAFT RECOVERY BANNER
+// ══════════════════════════════════════
+
+function showDraftRecoveryBanner() {
+  try {
+    const saved = localStorage.getItem('psp-draft');
+    if (!saved) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'draft-recovery-banner';
+    banner.className = 'draft-recovery-banner';
+    banner.innerHTML = `
+      <span>Unsaved document from last session</span>
+      <div class="draft-recovery-actions">
+        <button id="btn-restore-draft" class="btn-restore">Restore</button>
+        <button id="btn-dismiss-draft" class="btn-dismiss">Dismiss</button>
+      </div>
+    `;
+
+    const formPanel = document.getElementById('form-panel');
+    formPanel.insertBefore(banner, formPanel.firstChild);
+
+    document.getElementById('btn-restore-draft').addEventListener('click', () => {
+      loadDraft();
+      banner.remove();
+      showToast('Draft restored');
+    });
+
+    document.getElementById('btn-dismiss-draft').addEventListener('click', () => {
+      banner.remove();
+      clearDraft();
+    });
+  } catch (e) { /* ignore */ }
+}
 
 // ══════════════════════════════════════
 // TOAST NOTIFICATIONS

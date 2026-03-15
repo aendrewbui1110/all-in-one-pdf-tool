@@ -1,8 +1,8 @@
 {
-    "name": "psp-invoice-generator",
+    "name": "psp-all-in-one-pdf-tool",
     "private": true,
     "version": "1.0.0",
-    "description": "Perth Steel Patios — Invoice & Quote Generator",
+    "description": "Perth Steel Patios — All in One PDF Tool (Quotes, Invoices, Contracts)",
     "scripts": {
         "dev": "vite",
         "build": "vite build",
