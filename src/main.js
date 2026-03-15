@@ -1,4 +1,5 @@
 import './style.css';
+import { supabase } from './supabase.js';
 
 /* ═══════════════════════════════════════════════════════════════
    Perth Steel Patios — Document Generator
@@ -127,19 +128,18 @@ function resetForm() {
 let docType = 'quote';
 let lineItems = [];
 let nextLineId = 1;
-let docCounters = loadCounters();
 
 // ═══════════════════════════════════════════════════════════════
 // INITIALIZATION
 // ═══════════════════════════════════════════════════════════════
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initDocDate();
-  initDocNumber();
+  await initDocNumber();
   initTerms();
   addLineItem();
   bindEvents();
-  populateClientDropdown();
+  await populateClientDropdown();
   updatePreview();
   checkQuoteExpiry();
 
@@ -156,8 +156,8 @@ function initDocDate() {
   document.getElementById('doc-valid-until').value = validUntil.toISOString().split('T')[0];
 }
 
-function initDocNumber() {
-  updateDocNumber();
+async function initDocNumber() {
+  await updateDocNumber();
 }
 
 function initTerms() {
@@ -165,33 +165,41 @@ function initTerms() {
 }
 
 // ══════════════════════════════════════
-// DOC NUMBER AUTO-GENERATION
+// DOC NUMBER — Supabase counters
 // ══════════════════════════════════════
 
-function loadCounters() {
-  try {
-    const saved = localStorage.getItem('psp-doc-counters');
-    if (saved) return JSON.parse(saved);
-  } catch (e) { /* ignore */ }
-  return { quote: 1, deposit: 1, final: 1, contract: 1 };
-}
-
-function saveCounters() {
-  try {
-    localStorage.setItem('psp-doc-counters', JSON.stringify(docCounters));
-  } catch (e) { /* ignore */ }
-}
-
-function generateDocNumber(type) {
+function generateFallbackDocNumber(type) {
   const prefixes = { quote: 'PSP-Q', deposit: 'PSP-DEP', final: 'PSP-INV', contract: 'PSP-CON' };
   const prefix = prefixes[type] || 'PSP';
-  const num = String(docCounters[type] || 1).padStart(4, '0');
-  return `${prefix}-${num}`;
+  const timestamp = Date.now().toString().slice(-4);
+  return `${prefix}-${timestamp}`;
 }
 
-function updateDocNumber() {
+async function peekNextDocNumber(type) {
+  const { data, error } = await supabase
+    .from('doc_counters')
+    .select('counter')
+    .eq('doc_type', type)
+    .single();
+  if (error) return generateFallbackDocNumber(type);
+  const nextCounter = (data.counter || 0) + 1;
+  const prefixes = { quote: 'PSP-Q', deposit: 'PSP-DEP', final: 'PSP-INV', contract: 'PSP-CON' };
+  const prefix = prefixes[type] || 'PSP';
+  return `${prefix}-${String(nextCounter).padStart(4, '0')}`;
+}
+
+async function claimNextDocNumber(type) {
+  const { data, error } = await supabase.rpc('get_next_doc_number', { p_type: type });
+  if (error) {
+    console.error('Failed to claim doc number:', error);
+    return generateFallbackDocNumber(type);
+  }
+  return data;
+}
+
+async function updateDocNumber() {
   const input = document.getElementById('doc-number');
-  input.value = generateDocNumber(docType);
+  input.value = await peekNextDocNumber(docType);
 }
 
 // ══════════════════════════════════════
@@ -201,7 +209,7 @@ function updateDocNumber() {
 function bindEvents() {
   // Document type tabs
   document.querySelectorAll('.doc-tab').forEach(tab => {
-    tab.addEventListener('click', () => switchDocType(tab.dataset.type));
+    tab.addEventListener('click', () => { switchDocType(tab.dataset.type); });
   });
 
   // Add line item
@@ -320,12 +328,12 @@ function bindEvents() {
     });
     document.addEventListener('click', () => convertMenu.classList.remove('is-open'));
     convertMenu.querySelectorAll('.convert-option').forEach(opt => {
-      opt.addEventListener('click', () => {
+      opt.addEventListener('click', async () => {
         convertMenu.classList.remove('is-open');
         const targetType = opt.dataset.convert;
         if (targetType === docType) { showToast('Already on this type', 'error'); return; }
         if (confirm(`Convert current ${docType} to ${targetType}? Data will carry over.`)) {
-          convertTo(targetType);
+          await convertTo(targetType);
         }
       });
     });
@@ -334,8 +342,8 @@ function bindEvents() {
   // Client history
   const clientSelect = document.getElementById('client-history-select');
   if (clientSelect) {
-    clientSelect.addEventListener('change', () => {
-      loadClient(clientSelect.value);
+    clientSelect.addEventListener('change', async () => {
+      await loadClient(clientSelect.value);
       clientSelect.value = '';
     });
   }
@@ -380,7 +388,7 @@ function bindEvents() {
 // DOCUMENT TYPE SWITCHING
 // ══════════════════════════════════════
 
-function switchDocType(type) {
+async function switchDocType(type) {
   docType = type;
 
   document.querySelectorAll('.doc-tab').forEach(tab => {
@@ -456,7 +464,7 @@ function switchDocType(type) {
     document.getElementById('doc-valid-until').closest('.form-group').querySelector('label').textContent = 'Valid Until';
   }
 
-  updateDocNumber();
+  await updateDocNumber();
   document.getElementById('doc-terms').value = DEFAULT_TERMS[type];
 
   recalculate();
@@ -471,7 +479,7 @@ function switchDocType(type) {
 // CONVERT DOCUMENT FLOW
 // ══════════════════════════════════════
 
-function convertTo(targetType) {
+async function convertTo(targetType) {
   const sourceValues = getFormValues();
   const sourceDocNumber = sourceValues.docNumber;
   const sourceGst = document.getElementById('include-gst').checked;
@@ -483,10 +491,7 @@ function convertTo(targetType) {
   const quoteDepositOverride = parseFloat(sourceValues.quoteDepositOverride) || 0;
   const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : total * (depositPct / 100);
 
-  docCounters[docType]++;
-  saveCounters();
-
-  switchDocType(targetType);
+  await switchDocType(targetType);
 
   switch (targetType) {
     case 'deposit':
@@ -512,65 +517,92 @@ function convertTo(targetType) {
 }
 
 // ══════════════════════════════════════
-// CLIENT HISTORY
+// CLIENT HISTORY — Supabase
 // ══════════════════════════════════════
 
-function loadSavedClients() {
-  try { return JSON.parse(localStorage.getItem('psp-saved-clients') || '[]'); }
-  catch { return []; }
+async function fetchClients() {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .order('name');
+  if (error) { console.error('Failed to fetch clients:', error); return []; }
+  return data;
 }
 
-function saveSavedClients(clients) {
-  localStorage.setItem('psp-saved-clients', JSON.stringify(clients));
-}
-
-function populateClientDropdown() {
+async function populateClientDropdown() {
   const select = document.getElementById('client-history-select');
   if (!select) return;
-  const clients = loadSavedClients();
+  const clients = await fetchClients();
   select.innerHTML = '<option value="">Load saved client...</option>';
   clients.forEach(c => {
     const opt = document.createElement('option');
-    opt.value = c.name;
+    opt.value = c.id;
     opt.textContent = c.name;
     select.appendChild(opt);
   });
 }
 
-function saveCurrentClient() {
+async function saveCurrentClient() {
   const name = document.getElementById('client-name').value.trim();
   if (!name) { showToast('Enter a client name first', 'error'); return; }
 
-  const client = {
+  const clientData = {
     name,
     address: document.getElementById('client-address').value,
     phone: document.getElementById('client-phone').value,
     email: document.getElementById('client-email').value,
   };
 
-  const clients = loadSavedClients();
-  const idx = clients.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
-  if (idx >= 0) { clients[idx] = client; showToast(`Updated: ${name}`); }
-  else { clients.push(client); showToast(`Saved: ${name}`); }
+  // Check if client with this name already exists
+  const { data: existing } = await supabase
+    .from('clients')
+    .select('id')
+    .ilike('name', name)
+    .maybeSingle();
 
-  saveSavedClients(clients);
-  populateClientDropdown();
+  let result;
+  if (existing) {
+    // Update existing client
+    const { data, error } = await supabase
+      .from('clients')
+      .update({ ...clientData, updated_at: new Date().toISOString() })
+      .eq('id', existing.id)
+      .select();
+    if (error) { console.error(error); showToast('Failed to update client', 'error'); return; }
+    result = data?.[0];
+    showToast(`Updated: ${name}`);
+  } else {
+    // Insert new client
+    const { data, error } = await supabase
+      .from('clients')
+      .insert(clientData)
+      .select();
+    if (error) { console.error(error); showToast('Failed to save client', 'error'); return; }
+    result = data?.[0];
+    showToast(`Saved: ${name}`);
+  }
+
+  await populateClientDropdown();
+  return result;
 }
 
-function loadClient(name) {
-  if (!name) return;
-  const clients = loadSavedClients();
-  const client = clients.find(c => c.name === name);
-  if (client) {
-    document.getElementById('client-name').value = client.name;
-    document.getElementById('client-address').value = client.address || '';
-    document.getElementById('client-phone').value = client.phone || '';
-    document.getElementById('client-email').value = client.email || '';
-    recalculate();
-    updatePreview();
-    debouncedSave();
-    showToast(`Loaded: ${client.name}`);
-  }
+async function loadClient(clientId) {
+  if (!clientId) return;
+  const { data: client, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .single();
+  if (error || !client) { showToast('Client not found', 'error'); return; }
+
+  document.getElementById('client-name').value = client.name;
+  document.getElementById('client-address').value = client.address || '';
+  document.getElementById('client-phone').value = client.phone || '';
+  document.getElementById('client-email').value = client.email || '';
+  recalculate();
+  updatePreview();
+  debouncedSave();
+  showToast(`Loaded: ${client.name}`);
 }
 
 // ══════════════════════════════════════
@@ -1363,8 +1395,6 @@ async function downloadPDF() {
 
   try {
     const element = document.getElementById('preview-document');
-    const v = getFormValues();
-    const filename = `${v.docNumber}_${v.clientName || 'Client'}.pdf`.replace(/[^a-zA-Z0-9._-]/g, '_');
 
     // Only strip visual flourishes — do NOT change width, padding, or layout.
     // The element is already 210mm (A4 width) with built-in padding that acts
@@ -1415,12 +1445,26 @@ async function downloadPDF() {
       pdfDoc.line(10, pageHeight - 7, pageWidth - 10, pageHeight - 7);
     }
 
-    pdfDoc.save(filename);
+    // Claim the official doc number from Supabase before saving
+    const officialDocNumber = await claimNextDocNumber(docType);
+    const v = getFormValues();
+
+    // Update the form and preview with the claimed number
+    document.getElementById('doc-number').value = officialDocNumber;
+    updatePreview();
+
+    const officialFilename = `${officialDocNumber}_${v.clientName || 'Client'}.pdf`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    pdfDoc.save(officialFilename);
 
     element.style.boxShadow = origBoxShadow;
     element.style.borderRadius = origBorderRadius;
 
-    showToast(`PDF saved: ${filename}`);
+    // Save document record and upload PDF to Supabase (non-blocking)
+    saveDocumentToSupabase(officialDocNumber, v, docType).catch(err =>
+      console.error('Failed to save document to Supabase:', err)
+    );
+
+    showToast(`PDF saved: ${officialFilename}`);
 
   } catch (error) {
     console.error('PDF generation failed:', error);
@@ -1432,14 +1476,79 @@ async function downloadPDF() {
 }
 
 // ══════════════════════════════════════
+// SAVE DOCUMENT TO SUPABASE
+// ══════════════════════════════════════
+
+async function saveDocumentToSupabase(docNumber, formValues, type) {
+  const includeGst = document.getElementById('include-gst').checked;
+  const subtotal = lineItems.reduce((sum, item) => sum + (item.qty || 0) * (item.price || 0), 0);
+  const gst = includeGst ? subtotal * 0.10 : 0;
+  const total = subtotal + gst;
+
+  // Find or create the client
+  let clientId = null;
+  const clientName = formValues.clientName?.trim();
+  if (clientName) {
+    const { data: existing } = await supabase
+      .from('clients')
+      .select('id')
+      .ilike('name', clientName)
+      .maybeSingle();
+
+    if (existing) {
+      clientId = existing.id;
+    } else {
+      // Auto-save client on document creation
+      const { data: newClient } = await supabase
+        .from('clients')
+        .insert({
+          name: clientName,
+          address: formValues.clientAddress || null,
+          phone: formValues.clientPhone || null,
+          email: formValues.clientEmail || null,
+        })
+        .select('id')
+        .single();
+      if (newClient) clientId = newClient.id;
+      // Refresh client dropdown in background
+      populateClientDropdown();
+    }
+  }
+
+  // Calculate deposit amount for the record
+  const depositPct = parseFloat(formValues.depositPct) || 0;
+  const quoteDepositOverride = parseFloat(formValues.quoteDepositOverride) || 0;
+  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : total * (depositPct / 100);
+
+  // Save document record
+  const { error } = await supabase
+    .from('documents')
+    .insert({
+      doc_number: docNumber,
+      doc_type: type,
+      client_id: clientId,
+      status: 'sent',
+      status_code: 'S',
+      doc_date: formValues.docDate || null,
+      valid_until: formValues.validUntil || null,
+      subtotal,
+      gst,
+      total,
+      deposit_amount: depositAmount > 0 ? depositAmount : null,
+      form_data: formValues,
+      line_items: lineItems.filter(item => item.description || item.price > 0),
+    });
+
+  if (error) {
+    console.error('Failed to save document record:', error);
+  }
+}
+
+// ══════════════════════════════════════
 // NEW DOCUMENT
 // ══════════════════════════════════════
 
-function newDocument() {
-  // Increment counter
-  docCounters[docType]++;
-  saveCounters();
-
+async function newDocument() {
   // Clear draft
   clearDraft();
 
@@ -1452,7 +1561,7 @@ function newDocument() {
   addLineItem();
 
   initDocDate();
-  updateDocNumber();
+  await updateDocNumber();
   initTerms();
 
   recalculate();
