@@ -182,6 +182,49 @@ function distributePrice(totalExGst, presetKey) {
 }
 
 // ══════════════════════════════════════
+// COUNCIL LINE ITEM SYNC
+// Auto-adds/removes council line items based on dropdown selections
+// ══════════════════════════════════════
+
+const COUNCIL_DRAWINGS_DESC = 'Structural drawings & engineering (council)';
+const COUNCIL_LODGEMENT_DESC = 'Council lodgement & submission';
+const COUNCIL_DRAWINGS_PRICE = 850;
+const COUNCIL_LODGEMENT_PRICE = 250;
+
+function syncCouncilLineItems() {
+  const drawings = document.getElementById('council-drawings')?.value || 'none';
+  const lodgement = document.getElementById('council-lodgement')?.value || 'none';
+
+  // Remove existing council line items
+  lineItems = lineItems.filter(item =>
+    item.description !== COUNCIL_DRAWINGS_DESC &&
+    item.description !== COUNCIL_LODGEMENT_DESC
+  );
+
+  // Add back if PSP is handling
+  if (drawings === 'psp') {
+    lineItems.push({
+      id: nextLineId++,
+      description: COUNCIL_DRAWINGS_DESC,
+      qty: 1,
+      unit: 'job',
+      price: COUNCIL_DRAWINGS_PRICE,
+    });
+  }
+  if (lodgement === 'psp') {
+    lineItems.push({
+      id: nextLineId++,
+      description: COUNCIL_LODGEMENT_DESC,
+      qty: 1,
+      unit: 'job',
+      price: COUNCIL_LODGEMENT_PRICE,
+    });
+  }
+
+  renderLineItems();
+}
+
+// ══════════════════════════════════════
 // SHARED CALCULATIONS
 // ══════════════════════════════════════
 
@@ -501,6 +544,26 @@ function bindEvents() {
       updatePreview();
       debouncedSave();
       showToast(`Line items generated from $${totalInput.toFixed(2)}`);
+    });
+  }
+
+  // Council dropdowns — auto-add/remove line items
+  const councilDrawings = document.getElementById('council-drawings');
+  const councilLodgement = document.getElementById('council-lodgement');
+  if (councilDrawings) {
+    councilDrawings.addEventListener('change', () => {
+      syncCouncilLineItems();
+      recalculate();
+      updatePreview();
+      debouncedSave();
+    });
+  }
+  if (councilLodgement) {
+    councilLodgement.addEventListener('change', () => {
+      syncCouncilLineItems();
+      recalculate();
+      updatePreview();
+      debouncedSave();
     });
   }
 
