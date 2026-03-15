@@ -150,13 +150,19 @@
                     <div class="form-group" id="status-code-group">
                         <label for="status-code">Status</label>
                         <select id="status-code" class="status-code-select">
-                            <option value="D">D</option>
-                            <option value="S" selected>S</option>
-                            <option value="A">A</option>
-                            <option value="C">C</option>
-                            <option value="X">X</option>
-                            <option value="R">R</option>
+                            <option value="B">B</option>
+                            <option value="L" selected>L</option>
+                            <option value="P">P</option>
+                            <option value="F">F</option>
+                            <option value="$">$</option>
                         </select>
+                    </div>
+                    <div class="form-group" id="offbooks-group">
+                        <label class="toggle-label offbooks-toggle">
+                            <input type="checkbox" id="offbooks-flag" />
+                            <span class="toggle-switch"></span>
+                            <span class="offbooks-label">OB</span>
+                        </label>
                     </div>
                 </div>
 
@@ -274,6 +280,34 @@
                     <label for="job-description">Description / Scope of Works</label>
                     <textarea id="job-description" rows="3"
                         placeholder="e.g. Supply and install a 6m x 4m insulated steel patio with LED downlights..."></textarea>
+                </div>
+            </fieldset>
+
+            <!-- Council & Engineering -->
+            <fieldset class="form-section" id="council-section">
+                <legend>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>
+                    </svg>
+                    Council & Engineering
+                </legend>
+                <div class="form-row two-col">
+                    <div class="form-group">
+                        <label for="council-drawings">Structural Drawings & Engineering</label>
+                        <select id="council-drawings">
+                            <option value="none">Not required</option>
+                            <option value="psp">PSP to arrange ($850)</option>
+                            <option value="client">Client to arrange</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="council-lodgement">Council Lodgement & Submission</label>
+                        <select id="council-lodgement">
+                            <option value="none">Not required</option>
+                            <option value="psp">PSP to handle ($250)</option>
+                            <option value="client">Client to self-submit (guided)</option>
+                        </select>
+                    </div>
                 </div>
             </fieldset>
 

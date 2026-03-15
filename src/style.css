@@ -2263,6 +2263,49 @@ body {
   max-width: 100px;
 }
 
+/* ── Off-Books Toggle ── */
+#offbooks-group {
+  flex: 0 0 auto;
+  max-width: 80px;
+  display: flex;
+  align-items: center;
+}
+
+.offbooks-toggle {
+  gap: 4px !important;
+}
+
+.offbooks-label {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+#offbooks-flag:checked ~ .offbooks-label {
+  color: var(--red);
+}
+
+/* Off-books marker on PDF — tiny dot after website, only Andrew knows */
+.ob-mark {
+  color: #F7941D;
+  font-size: 14pt;
+  font-weight: 900;
+  line-height: 0;
+  vertical-align: super;
+  margin-left: 1px;
+}
+
+/* ── Council Section on PDF ── */
+.doc-council-section {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
 /* ── Dev Mode ── */
 .dev-mode-indicator {
   background: var(--accent);

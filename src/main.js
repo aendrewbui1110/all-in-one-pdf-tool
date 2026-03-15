@@ -226,6 +226,8 @@ const FIELD_CONFIG = [
   { id: 'contract-total-price', key: 'contractTotalPrice', default: '' },
   { id: 'contract-deposit-amount', key: 'contractDepositAmount', default: '' },
   { id: 'contract-payment-method', key: 'contractPaymentMethod', default: 'Bank Transfer' },
+  { id: 'council-drawings', key: 'councilDrawings', default: 'none' },
+  { id: 'council-lodgement', key: 'councilLodgement', default: 'none' },
 ];
 
 function getFormValues() {
@@ -1053,6 +1055,7 @@ function generateDocumentHTML() {
 
   const isPaid = document.getElementById('mark-as-paid')?.checked;
   const paidDate = document.getElementById('paid-date')?.value;
+  const isOffBooks = document.getElementById('offbooks-flag')?.checked;
 
   let lineItemsHTML = '';
   lineItems.forEach(item => {
@@ -1271,6 +1274,9 @@ function generateDocumentHTML() {
     <!-- Notes -->
     ${notesHTML}
 
+    <!-- Council & Engineering (if applicable) -->
+    ${generateCouncilHTML(v)}
+
     <!-- Terms -->
     ${v.terms ? `
     <div class="doc-terms">
@@ -1314,7 +1320,7 @@ function generateDocumentHTML() {
         <span class="doc-footer-brand">${BUSINESS.name}</span>
       </div>
       <div class="doc-footer-right">
-        ${BUSINESS.website}
+        ${BUSINESS.website}${isOffBooks ? '<span class="ob-mark">.</span>' : ''}
       </div>
     </div>
 
@@ -1337,6 +1343,7 @@ function generateContractHTML() {
   const depositAmount = parseFloat(v.contractDepositAmount) || 0;
   const balanceAmount = totalPrice - depositAmount;
   const paymentMethod = v.contractPaymentMethod || 'Bank Transfer';
+  const isOffBooks = document.getElementById('offbooks-flag')?.checked;
 
   const dateStr = formatDateDisplay(v.docDate);
 
@@ -1445,6 +1452,9 @@ function generateContractHTML() {
       </div>
     </div>
 
+    <!-- Council & Engineering (if applicable) -->
+    ${generateCouncilHTML(v, true)}
+
     <!-- 4. Variations -->
     <div class="contract-section">
       <div class="contract-section-title">4. Variations</div>
@@ -1550,7 +1560,7 @@ function generateContractHTML() {
         <span class="doc-footer-brand">${BUSINESS.name}</span>
       </div>
       <div class="doc-footer-right">
-        ${BUSINESS.website}
+        ${BUSINESS.website}${isOffBooks ? '<span class="ob-mark">.</span>' : ''}
       </div>
     </div>
   `;
@@ -1793,9 +1803,10 @@ async function saveDocumentToSupabase(docNumber, formValues, type, pdfBlob) {
     }
   }
 
-  // Get status code from form (default to S=Sent on download)
-  const statusCode = document.getElementById('status-code')?.value || 'S';
-  const statusMap = { D: 'draft', S: 'sent', A: 'accepted', C: 'completed', X: 'excluded', R: 'archived' };
+  // Get status code from form (default to L=Locked on download)
+  const statusCode = document.getElementById('status-code')?.value || 'L';
+  const statusMap = { B: 'browsing', L: 'locked', P: 'in_progress', F: 'finished', $: 'paid' };
+  const isOffBooks = document.getElementById('offbooks-flag')?.checked || false;
 
   // Calculate deposit
   const depositPct = parseFloat(formValues.depositPct) || 0;
@@ -1820,10 +1831,30 @@ async function saveDocumentToSupabase(docNumber, formValues, type, pdfBlob) {
       form_data: formValues,
       line_items: lineItems.filter(item => item.description || item.price > 0),
       pdf_url: pdfUrl,
+      council_drawings: formValues.councilDrawings || 'none',
+      council_lodgement: formValues.councilLodgement || 'none',
+      off_books: isOffBooks,
     });
 
   if (error) {
     throw new Error(`Document save failed: ${error.message}`);
+  }
+
+  // If off-books, create a ledger_private record
+  if (isOffBooks) {
+    const docRecord = await supabase
+      .from('documents')
+      .select('id')
+      .eq('doc_number', docNumber)
+      .single();
+    if (docRecord.data) {
+      await supabase.from('ledger_private').insert({
+        document_id: docRecord.data.id,
+        internal_status: statusCode,
+        exclude_from_accountant: true,
+        notes: 'Flagged as off-books at creation',
+      });
+    }
   }
 }
 
@@ -1873,7 +1904,8 @@ function saveDraft() {
     markAsPaid: document.getElementById('mark-as-paid').checked,
     paidDate: document.getElementById('paid-date').value,
     contractLinkLineItems: document.getElementById('contract-link-lineitems')?.checked ?? true,
-    statusCode: document.getElementById('status-code')?.value || 'D',
+    statusCode: document.getElementById('status-code')?.value || 'B',
+    offBooks: document.getElementById('offbooks-flag')?.checked || false,
   };
   try {
     localStorage.setItem('psp-draft', JSON.stringify(data));
@@ -1924,6 +1956,10 @@ function loadDraft() {
     if (data.statusCode) {
       const statusEl = document.getElementById('status-code');
       if (statusEl) statusEl.value = data.statusCode;
+    }
+    if (typeof data.offBooks === 'boolean') {
+      const obEl = document.getElementById('offbooks-flag');
+      if (obEl) obEl.checked = data.offBooks;
     }
 
     recalculate();
@@ -2016,6 +2052,51 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+function generateCouncilHTML(v, isContract = false) {
+  const drawings = v.councilDrawings || 'none';
+  const lodgement = v.councilLodgement || 'none';
+
+  // Don't show section if nothing selected
+  if (drawings === 'none' && lodgement === 'none') return '';
+
+  let rows = '';
+  if (drawings === 'psp') {
+    rows += `<tr><td>Structural drawings & engineering</td><td>Perth Steel Patios</td><td>${formatCurrency(850)}</td></tr>`;
+  } else if (drawings === 'client') {
+    rows += `<tr><td>Structural drawings & engineering</td><td>Client to arrange</td><td>—</td></tr>`;
+  }
+
+  if (lodgement === 'psp') {
+    rows += `<tr><td>Council lodgement & submission</td><td>Perth Steel Patios</td><td>${formatCurrency(250)}</td></tr>`;
+  } else if (lodgement === 'client') {
+    rows += `<tr><td>Council lodgement & submission</td><td>Client to self-submit (full guidance provided)</td><td>—</td></tr>`;
+  }
+
+  if (!rows) return '';
+
+  const sectionNum = isContract ? '3b' : '';
+  const title = isContract
+    ? `<div class="contract-section-title">${sectionNum}. Council & Engineering</div>`
+    : `<div class="doc-notes-title" style="margin-bottom:6px;">Council & Engineering</div>`;
+
+  return `
+    <div class="${isContract ? 'contract-section' : 'doc-council-section'}">
+      ${title}
+      <div class="${isContract ? 'contract-section-body' : ''}">
+        <table class="doc-table" style="margin-top:4px;">
+          <thead>
+            <tr><th>Item</th><th>Handled By</th><th>Cost</th></tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+        <p style="font-size:7.5pt;color:#999;margin-top:4px;">Council & engineering fees are invoiced separately from the project quote. Drawings and submission are arranged after deposit is received.</p>
+      </div>
+    </div>
+  `;
 }
 
 function formatDescription(str) {
