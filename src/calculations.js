@@ -15,9 +15,8 @@ export function calculateTotals(lineItems, includeGst) {
 }
 
 // ── Deposit calculation ──
-export function calculateDepositAmount(total, depositPct, depositOverride) {
-  if (depositOverride > 0) return depositOverride;
-  return total * (depositPct / 100);
+export function calculateDepositAmount(total, depositOverride) {
+  return depositOverride > 0 ? depositOverride : 0;
 }
 
 // ── Price breakdown distribution ──
@@ -48,20 +47,13 @@ export function recalculate() {
   const lineItems = getLineItems();
   const includeGst = document.getElementById('include-gst').checked;
   const { subtotal, gst, total } = calculateTotals(lineItems, includeGst);
-  const depositPct = parseFloat(document.getElementById('deposit-pct').value) || 0;
   const quoteDepositOverride = parseFloat(document.getElementById('quote-deposit-override')?.value) || 0;
-  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : total * (depositPct / 100);
+  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : 0;
 
   document.getElementById('calc-subtotal').textContent = formatCurrency(subtotal);
   document.getElementById('calc-gst').textContent = includeGst ? formatCurrency(gst) : 'N/A';
   document.getElementById('calc-total').textContent = formatCurrency(total);
 
-  const depositLabel = document.getElementById('calc-deposit-row');
-  if (quoteDepositOverride > 0) {
-    depositLabel.querySelector('span:first-child').textContent = 'Deposit Required';
-  } else {
-    depositLabel.querySelector('span:first-child').innerHTML = `Deposit Required (<span id="calc-deposit-pct-label">${depositPct}</span>%)`;
-  }
   document.getElementById('calc-deposit').textContent = formatCurrency(depositAmount);
 
   if (docType === 'final') {
@@ -86,8 +78,8 @@ export function updateContractPricingLink() {
   if (linkToggle.checked && docType === 'contract') {
     const includeGst = document.getElementById('include-gst').checked;
     const { total } = calculateTotals(lineItems, includeGst);
-    const depositPct = parseFloat(document.getElementById('deposit-pct').value) || 30;
-    const depositAmount = total * (depositPct / 100);
+    const quoteDepositOverride = parseFloat(document.getElementById('quote-deposit-override')?.value) || 0;
+    const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : 0;
 
     totalInput.value = total > 0 ? total.toFixed(2) : '';
     totalInput.disabled = true;

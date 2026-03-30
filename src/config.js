@@ -134,7 +134,6 @@ export const FIELD_CONFIG = [
   { id: 'doc-number', key: 'docNumber', default: '' },
   { id: 'doc-date', key: 'docDate', default: '' },
   { id: 'doc-valid-until', key: 'validUntil', default: '' },
-  { id: 'deposit-pct', key: 'depositPct', default: '30' },
   { id: 'quote-deposit-override', key: 'quoteDepositOverride', default: '' },
   { id: 'client-name', key: 'clientName', default: '' },
   { id: 'client-address', key: 'clientAddress', default: '' },

@@ -210,7 +210,6 @@ export async function saveDocumentToSupabase(docNumber, formValues, type, pdfBlo
     if (existing) {
       clientId = existing.id;
     } else {
-      // FIX: Add error checking on client insert
       const { data: newClient, error: insertError } = await supabase
         .from('clients')
         .insert({
@@ -253,9 +252,8 @@ export async function saveDocumentToSupabase(docNumber, formValues, type, pdfBlo
   const isOffBooks = document.getElementById('offbooks-flag')?.checked || false;
 
   // Calculate deposit using the shared function
-  const depositPct = parseFloat(formValues.depositPct) || 0;
   const quoteDepositOverride = parseFloat(formValues.quoteDepositOverride) || 0;
-  const depositAmt = calculateDepositAmount(total, depositPct, quoteDepositOverride);
+  const depositAmt = calculateDepositAmount(total, quoteDepositOverride);
 
   // Save document record
   const { error } = await supabase
@@ -292,7 +290,6 @@ export async function saveDocumentToSupabase(docNumber, formValues, type, pdfBlo
       .eq('doc_number', docNumber)
       .single();
     if (docRecord.data) {
-      // FIX: Add error checking and warning on ledger_private insert
       const { error: ledgerError } = await supabase.from('ledger_private').insert({
         document_id: docRecord.data.id,
         internal_status: statusCode,

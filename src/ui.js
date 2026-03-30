@@ -80,7 +80,6 @@ export async function switchDocType(type) {
   const validityRow = document.getElementById('validity-row');
   const depositRefRow = document.getElementById('deposit-ref-row');
   const finalRefRow = document.getElementById('final-ref-row');
-  const depositPctGroup = document.getElementById('deposit-pct-group');
   const quoteDepositOverrideGroup = document.getElementById('quote-deposit-override-group');
   const calcDepositRow = document.getElementById('calc-deposit-row');
   const calcBalanceRow = document.getElementById('calc-balance-row');
@@ -98,7 +97,6 @@ export async function switchDocType(type) {
   validityRow.style.display = '';
   depositRefRow.style.display = 'none';
   finalRefRow.style.display = 'none';
-  depositPctGroup.style.display = '';
   quoteDepositOverrideGroup.style.display = '';
   calcDepositRow.style.display = '';
   calcBalanceRow.style.display = 'none';
@@ -120,13 +118,11 @@ export async function switchDocType(type) {
       break;
     case 'deposit':
       depositRefRow.style.display = '';
-      depositPctGroup.style.display = 'none';
       quoteDepositOverrideGroup.style.display = 'none';
       document.getElementById('doc-valid-until').closest('.form-group').querySelector('label').textContent = 'Due Date';
       break;
     case 'final':
       finalRefRow.style.display = '';
-      depositPctGroup.style.display = 'none';
       quoteDepositOverrideGroup.style.display = 'none';
       calcDepositRow.style.display = 'none';
       calcBalanceRow.style.display = '';
@@ -163,9 +159,8 @@ export async function convertTo(targetType) {
   const sourceGst = document.getElementById('include-gst').checked;
 
   const { total } = calculateTotals(lineItems, sourceGst);
-  const depositPct = parseFloat(sourceValues.depositPct) || 30;
   const quoteDepositOverride = parseFloat(sourceValues.quoteDepositOverride) || 0;
-  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : total * (depositPct / 100);
+  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : 0;
 
   await switchDocType(targetType);
 
@@ -287,7 +282,7 @@ export function bindEvents() {
   });
 
   // Form change listeners for live preview
-  const formInputs = '#doc-number, #doc-date, #doc-valid-until, #deposit-pct, #quote-deposit-override, ' +
+  const formInputs = '#doc-number, #doc-date, #doc-valid-until, #quote-deposit-override, ' +
     '#client-name, #client-address, #client-phone, #client-email, ' +
     '#job-title, #job-site, #job-description, #doc-notes, #doc-terms, ' +
     '#deposit-quote-ref, #deposit-amount-override, #final-quote-ref, #deposit-paid, ' +
@@ -303,6 +298,38 @@ export function bindEvents() {
       });
     }
   });
+
+  // Sync Site Address with Client Address
+  const clientAddress = document.getElementById('client-address');
+  const jobSite = document.getElementById('job-site');
+  const syncSiteToggle = document.getElementById('sync-site-address');
+  
+  if (syncSiteToggle && clientAddress && jobSite) {
+    const handleSync = () => {
+      if (syncSiteToggle.checked) {
+        jobSite.value = clientAddress.value;
+        jobSite.disabled = true;
+        jobSite.style.opacity = '0.7';
+        jobSite.style.cursor = 'not-allowed';
+      } else {
+        jobSite.disabled = false;
+        jobSite.style.opacity = '1';
+        jobSite.style.cursor = 'text';
+      }
+      refreshUI();
+    };
+
+    syncSiteToggle.addEventListener('change', handleSync);
+    clientAddress.addEventListener('input', () => {
+      if (syncSiteToggle.checked) handleSync();
+    });
+
+    setupOsmAutocomplete(clientAddress, () => {
+      if (syncSiteToggle.checked) handleSync();
+      refreshUI();
+    });
+    setupOsmAutocomplete(jobSite, refreshUI);
+  }
 
   // Clear validation on client name input
   document.getElementById('client-name').addEventListener('input', () => {
@@ -323,9 +350,17 @@ export function bindEvents() {
   const breakdownBtn = document.getElementById('btn-generate-breakdown');
   if (breakdownBtn) {
     breakdownBtn.addEventListener('click', () => {
+      breakdownBtn.blur(); // Fix sticky hover state
+
       const patioTotal = parseFloat(document.getElementById('breakdown-total').value) || 0;
       if (patioTotal <= 0) {
         showToast('Enter the patio cost first', 'error');
+        return;
+      }
+
+      const currentItems = getLineItems();
+      const hasContent = currentItems.some(i => i.description.trim() || i.price > 0);
+      if (hasContent && !confirm('This will overwrite your current line items. Continue?')) {
         return;
       }
 
@@ -437,4 +472,70 @@ export function bindEvents() {
 
   // Expiry check on date change
   document.getElementById('doc-valid-until').addEventListener('input', checkQuoteExpiry);
+}
+
+// ── OpenStreetMap (Photon) Address Autocomplete ──
+export function setupOsmAutocomplete(inputEl, onSelect) {
+  if (!inputEl) return;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'osm-autocomplete-wrapper';
+  inputEl.parentNode.insertBefore(wrapper, inputEl);
+  wrapper.appendChild(inputEl);
+  const dropdown = document.createElement('ul');
+  dropdown.className = 'osm-autocomplete-dropdown';
+  wrapper.appendChild(dropdown);
+  let debounceTimer;
+  inputEl.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const query = inputEl.value;
+    if (query.length < 3) {
+      dropdown.classList.remove('active');
+      return;
+    }
+    debounceTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&country=AU&lat=-31.9522&lon=115.8614`);
+        const data = await res.json();
+        dropdown.innerHTML = '';
+        if (data.features && data.features.length > 0) {
+          data.features.forEach(f => {
+            const p = f.properties;
+            const parts = [];
+            if (p.housenumber) parts.push(p.housenumber);
+            if (p.street) parts.push(p.street);
+            if (p.name && !p.street) parts.push(p.name);
+            let streetAddr = parts.join(' ');
+            const city = p.city || p.town || p.suburb || p.district || '';
+            const state = p.state || '';
+            const postcode = p.postcode || '';
+            let fullAddress = streetAddr || city;
+            if (city && fullAddress !== city) fullAddress += `, ${city}`;
+            if (state) fullAddress += ` ${state}`;
+            if (postcode) fullAddress += ` ${postcode}`;
+            const li = document.createElement('li');
+            li.textContent = fullAddress.trim();
+            li.addEventListener('click', () => {
+              inputEl.value = fullAddress.trim();
+              dropdown.classList.remove('active');
+              if (onSelect) onSelect(inputEl.value);
+            });
+            dropdown.appendChild(li);
+          });
+          dropdown.classList.add('active');
+        } else {
+          dropdown.classList.remove('active');
+        }
+      } catch (err) {
+        console.error('OSM Autocomplete Error:', err);
+      }
+    }, 300);
+  });
+  document.addEventListener('click', (e) => {
+    if (!wrapper.contains(e.target)) {
+      dropdown.classList.remove('active');
+    }
+  });
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') dropdown.classList.remove('active');
+  });
 }

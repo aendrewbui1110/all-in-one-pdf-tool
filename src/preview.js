@@ -83,9 +83,8 @@ export function generateDocumentHTML() {
   const lineItems = getLineItems();
   const includeGst = document.getElementById('include-gst').checked;
   const { subtotal, gst, total } = calculateTotals(lineItems, includeGst);
-  const depositPct = parseFloat(document.getElementById('deposit-pct').value) || 0;
   const quoteDepositOverride = parseFloat(document.getElementById('quote-deposit-override')?.value) || 0;
-  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : total * (depositPct / 100);
+  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : 0;
   const useFixedDeposit = quoteDepositOverride > 0;
   const depositPaid = parseFloat(document.getElementById('deposit-paid')?.value) || 0;
   const amountDue = total - depositPaid;
@@ -148,7 +147,7 @@ export function generateDocumentHTML() {
   `;
 
   if (docType === 'quote') {
-    const depositLabel = useFixedDeposit ? 'Deposit Required' : `Deposit Required (${depositPct}%)`;
+    const depositLabel = 'Deposit Required';
     totalsHTML += `
       <div class="doc-total-row doc-total-row-deposit">
         <span class="doc-total-label">${depositLabel}</span>
@@ -335,7 +334,7 @@ export function generateDocumentHTML() {
     ${docType === 'quote' ? `
     <div class="doc-acceptance">
       <div class="doc-acceptance-title">Quote Acceptance</div>
-      <div class="doc-acceptance-text">I/We accept this quote and agree to the terms and conditions outlined above. A deposit of ${useFixedDeposit ? formatCurrency(depositAmount) : depositPct + '%'} is required to confirm the booking.</div>
+      <div class="doc-acceptance-text">I/We accept this quote and agree to the terms and conditions outlined above. A deposit of ${formatCurrency(depositAmount)} is required to confirm the booking.</div>
       <div class="doc-acceptance-fields">
         <div class="doc-acceptance-field">
           <div class="doc-acceptance-field-label">Full Name</div>

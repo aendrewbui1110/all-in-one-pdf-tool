@@ -7,7 +7,9 @@
     <title>Perth Steel Patios — Document Generator</title>
     <meta name="description"
         content="Generate professional quotes, deposit invoices and final invoices for Perth Steel Patios." />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <!-- OpenStreetMap (Photon) Autocomplete handles suggestions natively -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap"
@@ -129,15 +131,8 @@
                         <label for="doc-valid-until">Valid Until</label>
                         <input type="date" id="doc-valid-until" />
                     </div>
-                    <div class="form-group" id="deposit-pct-group">
-                        <label for="deposit-pct">Deposit %</label>
-                        <div class="input-with-suffix">
-                            <input type="number" id="deposit-pct" value="30" min="0" max="100" step="5" />
-                            <span class="input-suffix">%</span>
-                        </div>
-                    </div>
                     <div class="form-group" id="quote-deposit-override-group">
-                        <label for="quote-deposit-override">Or Fixed Amount ($)</label>
+                        <label for="quote-deposit-override">Deposit Amount ($)</label>
                         <input type="number" id="quote-deposit-override" placeholder="e.g. 2000" step="0.01" min="0" />
                     </div>
                 </div>
@@ -236,8 +231,8 @@
                 </div>
                 <div class="form-group">
                     <label for="client-address">Address</label>
-                    <textarea id="client-address" rows="2" autocomplete="street-address"
-                        placeholder="e.g. 45 Ocean Drive&#10;Scarborough WA 6019"></textarea>
+                    <input type="text" id="client-address" autocomplete="street-address"
+                        placeholder="e.g. 45 Ocean Drive, Scarborough WA 6019" />
                 </div>
                 <div class="form-row two-col">
                     <div class="form-group">
@@ -265,8 +260,14 @@
                     <input type="text" id="job-title" placeholder="e.g. Steel Patio Installation" />
                 </div>
                 <div class="form-group">
-                    <label for="job-site">Site Address</label>
-                    <input type="text" id="job-site" placeholder="e.g. 45 Ocean Drive, Scarborough WA 6019" />
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span for="job-site">Site Address</span>
+                        <label class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                            <input type="checkbox" id="sync-site-address" checked style="margin: 0; transform: scale(0.8);" />
+                            Same as Client Address
+                        </label>
+                    </label>
+                    <input type="text" id="job-site" placeholder="e.g. 45 Ocean Drive, Scarborough WA 6019" disabled style="opacity: 0.7; cursor: not-allowed;" />
                 </div>
                 <div class="form-group">
                     <label for="scope-template">Scope Template</label>
@@ -491,7 +492,7 @@
                         <span id="calc-total" class="total-value">$0.00</span>
                     </div>
                     <div class="total-row total-row-deposit" id="calc-deposit-row">
-                        <span>Deposit Required (<span id="calc-deposit-pct-label">30</span>%)</span>
+                        <span>Deposit Required</span>
                         <span id="calc-deposit" class="total-value">$0.00</span>
                     </div>
                     <div class="total-row total-row-balance" id="calc-balance-row" style="display:none">

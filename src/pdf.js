@@ -39,10 +39,8 @@ export function validateForm() {
   if (docType !== 'contract') {
     const includeGst = document.getElementById('include-gst').checked;
     const { total } = calculateTotals(lineItems, includeGst);
-    const depositPct = parseFloat(document.getElementById('deposit-pct').value) || 0;
     const depositOverride = parseFloat(document.getElementById('quote-deposit-override')?.value) || 0;
 
-    if (depositPct > 100) errors.push('Deposit % cannot exceed 100');
     if (depositOverride > 0 && depositOverride > total && total > 0) {
       errors.push('Fixed deposit amount exceeds total');
     }
