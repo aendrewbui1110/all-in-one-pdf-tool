@@ -18,6 +18,8 @@
 
 <body>
 
+    <a href="#form-panel" class="sr-only skip-link">Skip to form</a>
+
     <!-- ═══════════════ TOP HEADER BAR ═══════════════ -->
     <header id="app-header">
         <div class="header-brand">
@@ -100,6 +102,7 @@
 
         <!-- ─────── LEFT: FORM ─────── -->
         <section id="form-panel">
+            <form novalidate id="main-form">
 
             <!-- Document Info -->
             <fieldset class="form-section">
@@ -118,7 +121,7 @@
                     </div>
                     <div class="form-group">
                         <label for="doc-date">Date</label>
-                        <input type="date" id="doc-date" />
+                        <input type="date" id="doc-date" required aria-required="true" />
                     </div>
                 </div>
                 <div class="form-row two-col" id="validity-row">
@@ -214,7 +217,7 @@
                     Client Details
                 </legend>
                 <div class="client-history-bar">
-                    <select id="client-history-select">
+                    <select id="client-history-select" aria-label="Load saved client">
                         <option value="">Load saved client...</option>
                     </select>
                     <button type="button" id="btn-save-client" class="btn-save-client" title="Save client for reuse">
@@ -228,22 +231,22 @@
                 </div>
                 <div class="form-group">
                     <label for="client-name">Full Name</label>
-                    <input type="text" id="client-name" placeholder="e.g. John Smith" />
-                    <span class="validation-msg" id="val-client-name">Client name is required</span>
+                    <input type="text" id="client-name" placeholder="e.g. John Smith" required aria-required="true" autocomplete="name" aria-describedby="val-client-name" />
+                    <span class="validation-msg" id="val-client-name" role="alert" aria-live="polite">Client name is required</span>
                 </div>
                 <div class="form-group">
                     <label for="client-address">Address</label>
-                    <textarea id="client-address" rows="2"
+                    <textarea id="client-address" rows="2" autocomplete="street-address"
                         placeholder="e.g. 45 Ocean Drive&#10;Scarborough WA 6019"></textarea>
                 </div>
                 <div class="form-row two-col">
                     <div class="form-group">
                         <label for="client-phone">Phone</label>
-                        <input type="tel" id="client-phone" placeholder="e.g. 0412 345 678" />
+                        <input type="tel" id="client-phone" placeholder="e.g. 0412 345 678" autocomplete="tel" />
                     </div>
                     <div class="form-group">
                         <label for="client-email">Email</label>
-                        <input type="email" id="client-email" placeholder="e.g. john@email.com" />
+                        <input type="email" id="client-email" placeholder="e.g. john@email.com" autocomplete="email" />
                     </div>
                 </div>
             </fieldset>
@@ -522,6 +525,7 @@
                 </div>
             </fieldset>
 
+            </form>
         </section>
 
         <!-- ─────── RIGHT: LIVE PREVIEW ─────── -->
