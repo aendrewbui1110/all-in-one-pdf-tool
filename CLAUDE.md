@@ -8,19 +8,24 @@ Andrew (Toby) Bui, sole director of Perth Steel Patios Pty Ltd (ACN 696 071 664)
 
 This is the **All-In-One Business Tool** for Perth Steel Patios. It started as a simple PDF document generator (quotes, invoices, contracts) and is being rebuilt into a comprehensive business tool that both I and my AI agents will use.
 
-### Current State (as of 2026-03-23)
+### Current State (as of 2026-03-30 — v2 rebuild)
 - Vanilla JS + Vite single-page app (no frameworks)
 - Supabase backend (Sydney region) — clients, documents, counters, storage
 - Generates: Quotes, Deposit Invoices, Final Invoices, Contract Agreements
-- Live preview with branded PDF download (html2pdf.js)
+- **pdfmake** for vector PDFs (selectable text, small files, consistent rendering)
+- **Reactive store** — single state object drives preview, calculations, draft save
+- **data-bind** attributes for two-way form binding
 - Dark theme UI with orange accent (#F7941D)
-- Fully rebranded to Perth Steel Patios (was "Reliable Patio Solutions")
-- Dev mode toggle (defaults ON) — skips all Supabase writes for safe testing
-- Price breakdown: enter patio cost + style, auto-distributes across realistic line items
-- Council & engineering section: drawings ($850) and lodgement ($250) auto-add as line items
+- Live HTML preview (separate from PDF generation)
+- Deposit: both percentage (30%) AND fixed dollar amount via toggle
+- Valid Until: period selector (7/14/30/60/90 days or custom date)
+- Price breakdown: enter patio cost + style, auto-distributes across line items
+- Council & engineering: drawings ($850) / lodgement ($250) auto-add as line items
 - Off-books (OB) toggle: orange dot in PDF footer, creates ledger_private record
+- Status codes removed from UI — will be set by agents via email pipeline
 - PDF upload to Supabase Storage on download
-- Draft auto-save to localStorage with recovery banner on load
+- Draft auto-save to localStorage via store subscription
+- Dev mode toggle (defaults ON) — skips all Supabase writes
 
 ### Where It's Heading
 - Split main.js into modules (currently 2,183 lines — biggest maintenance risk)
@@ -93,28 +98,28 @@ No "PAID" stamp on documents — payment tracking is private between Andrew and 
 
 - **Frontend:** Vanilla JS + Vite (no frameworks — keep it lean)
 - **Backend:** Supabase (PostgreSQL, Auth, Storage, Edge Functions)
-- **PDF:** html2pdf.js (CDN)
+- **PDF:** pdfmake (npm, vector output, bundled fonts)
 - **Hosting:** Vercel (planned)
 - **Env vars:** VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (in .env, git-ignored)
 
 ## File Structure
 
 ```
-├── index.html              (33KB — main entry, all HTML structure, a11y attributes)
+├── index.html              (288 lines — semantic HTML, data-bind attributes)
 ├── src/
-│   ├── main.js             (21 lines — slim entry point, imports + DOMContentLoaded)
-│   ├── config.js           (166 lines — BUSINESS, DEFAULT_TERMS, SCOPE_TEMPLATES, PRESETS, DOC_PREFIXES)
-│   ├── state.js            (71 lines — app state: docType, lineItems, devMode with getters/setters)
-│   ├── utils.js            (37 lines — escapeHtml, formatCurrency, formatDateDisplay, debounce)
-│   ├── calculations.js     (100 lines — SINGLE SOURCE OF TRUTH for subtotal/GST/total/deposit)
-│   ├── line-items.js       (148 lines — add/remove/render/sync line items)
-│   ├── preview.js          (608 lines — HTML generation for PDF preview)
-│   ├── pdf.js              (187 lines — PDF download, validation)
-│   ├── supabase-ops.js     (308 lines — all Supabase reads/writes, doc numbers, client CRUD)
-│   ├── draft.js            (144 lines — auto-save, load, recovery banner)
-│   ├── ui.js               (440 lines — event binding, doc type switching, toasts, refreshUI)
-│   ├── style.css           (2,398 lines — dark theme, orange accent, a11y fixes)
-│   └── supabase.js         (18 lines — Supabase client config)
+│   ├── main.js             (31 lines — entry point, initialisation)
+│   ├── store.js            (87 lines — reactive state store with pub/sub)
+│   ├── config.js           (121 lines — BUSINESS, DEFAULT_TERMS, SCOPE_TEMPLATES, PRESETS)
+│   ├── utils.js            (68 lines — escapeHtml, formatCurrency, formatDateDisplay, logo conversion)
+│   ├── calculations.js     (33 lines — totals, deposit, price distribution)
+│   ├── line-items.js       (103 lines — add/remove/render/sync, inline total updates)
+│   ├── preview.js          (350 lines — HTML preview for all doc types)
+│   ├── pdf.js              (554 lines — pdfmake vector PDF generation)
+│   ├── db.js               (208 lines — Supabase CRUD, doc numbers, clients)
+│   ├── draft.js            (43 lines — auto-save via store subscription)
+│   ├── ui.js               (438 lines — data-bind, event wiring, doc switching)
+│   ├── style.css           (397 lines — dark theme, orange accent, responsive)
+│   └── supabase.js         (12 lines — Supabase client config)
 ├── public/
 │   ├── logo.svg            (Perth Steel Patios logo)
 │   └── load-job.html       (standalone job loader)
@@ -122,31 +127,29 @@ No "PAID" stamp on documents — payment tracking is private between Andrew and 
 │   ├── plans/
 │   │   └── all-in-one-tool-buildplan.md
 │   └── migrations/
-│       ├── 001_data_integrity.sql    (constraints, indexes, triggers)
-│       ├── 002_schema_evolution.sql  (jobs, activity_log, pricing_config tables)
-│       ├── 003_views.sql            (documents_public, job_pipeline, dashboard_stats)
+│       ├── 001_data_integrity.sql
+│       ├── 002_schema_evolution.sql
+│       ├── 003_views.sql
 │       └── README.md
 ├── .env                    (Supabase credentials — git-ignored)
-├── package.json            (Vite + @supabase/supabase-js)
+├── package.json            (Vite + @supabase/supabase-js + pdfmake)
 └── vite.config.js
 ```
 
 ## Build Plan Progress
 
-Full plan at `docs/plans/all-in-one-tool-buildplan.md`.
+1. ✅ Phases 1-5: Rebrand, Supabase, documents, council, off-books, price breakdown
+2. ✅ **v2 rebuild (2026-03-30):** pdfmake PDFs, reactive store, data-bind, full audit fixes
+3. DEFERRED — Quote Calculator page (waiting on finalised pricing)
+4. NOT STARTED — Agent API layer (scoped RLS, Edge Functions, API docs)
+5. READY TO RUN — Migration SQL files in docs/migrations/ (run in Supabase SQL Editor)
 
-1. ✅ Rebrand to Perth Steel Patios + remove password + fresh start
-2. ✅ Fresh start behaviour (restore banner, no auto-load)
-3. ✅ Supabase backend setup (tables, RLS, storage bucket, doc number function)
-4. ✅ Migrate client/document data to Supabase
-5. ✅ Status codes reworked to B/L/P/F/$, council section, off-books, price breakdown, PDF upload
-5a. ✅ Code split: main.js (2,183 lines) split into 12 modules with proper ES imports
-5b. ✅ Bug fixes: error handling, validation display, escapeHtml, CDN fallback, draft recovery
-5c. ✅ Accessibility: keyboard nav, focus-visible, ARIA, reduced motion, skip link, form semantics
-5d. ✅ Migration SQL written for: data integrity, schema evolution (jobs, activity_log, pricing_config), agent views
-6. DEFERRED — Quote Calculator page (waiting on finalised pricing from Andrew)
-7. NOT STARTED — Agent API layer (scoped RLS, Edge Functions, API docs)
-7a. READY TO RUN — Migration SQL files in docs/migrations/ (run in Supabase SQL Editor)
+### v2 rebuild notes
+- Status codes removed from UI — agents will set status by monitoring email sends
+- html2pdf.js replaced with pdfmake — vector PDFs, no CDN dependency
+- Deposit % field restored alongside fixed amount option
+- Valid Until replaced with period selector (auto-calculates from doc date)
+- All critical bugs from production audit fixed (see commit c6278d5 for v1 snapshot)
 
 ## Patio Styles & Price Breakdown
 
