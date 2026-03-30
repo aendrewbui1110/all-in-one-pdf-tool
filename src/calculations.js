@@ -1,12 +1,5 @@
-/* ═══════════════════════════════════════════════════════════════
-   Perth Steel Patios — Calculations (Single Source of Truth)
-   ═══════════════════════════════════════════════════════════════ */
+import { PRICE_PRESETS } from './config.js';
 
-import { PRICE_BREAKDOWN_PRESETS } from './config.js';
-import { getDocType, getLineItems } from './state.js';
-import { formatCurrency } from './utils.js';
-
-// ── Core totals calculation — used everywhere ──
 export function calculateTotals(lineItems, includeGst) {
   const subtotal = lineItems.reduce((sum, item) => sum + (item.qty || 0) * (item.price || 0), 0);
   const gst = includeGst ? subtotal * 0.10 : 0;
@@ -14,14 +7,14 @@ export function calculateTotals(lineItems, includeGst) {
   return { subtotal, gst, total };
 }
 
-// ── Deposit calculation ──
-export function calculateDepositAmount(total, depositOverride) {
-  return depositOverride > 0 ? depositOverride : 0;
+export function calculateDeposit(total, percent, fixedAmount, useFixed) {
+  if (useFixed && fixedAmount > 0) return fixedAmount;
+  if (!useFixed && percent > 0) return total * (percent / 100);
+  return 0;
 }
 
-// ── Price breakdown distribution ──
 export function distributePrice(totalExGst, presetKey) {
-  const preset = PRICE_BREAKDOWN_PRESETS[presetKey] || PRICE_BREAKDOWN_PRESETS.skillion;
+  const preset = PRICE_PRESETS[presetKey] || PRICE_PRESETS.skillion;
   const items = [];
   let remaining = totalExGst;
 
@@ -30,63 +23,11 @@ export function distributePrice(totalExGst, presetKey) {
     if (isLast) {
       items.push({ description: preset[i].description, qty: 1, unit: 'job', price: Math.round(remaining * 100) / 100 });
     } else {
-      const basePct = preset[i].pct / 100;
-      const variance = (Math.random() - 0.5) * 0.04 * basePct;
-      const amount = Math.round((totalExGst * (basePct + variance)) * 100) / 100;
+      const amount = Math.round((totalExGst * preset[i].pct / 100) * 100) / 100;
       items.push({ description: preset[i].description, qty: 1, unit: 'job', price: amount });
       remaining -= amount;
     }
   }
 
   return items;
-}
-
-// ── Recalculate DOM summary ──
-export function recalculate() {
-  const docType = getDocType();
-  const lineItems = getLineItems();
-  const includeGst = document.getElementById('include-gst').checked;
-  const { subtotal, gst, total } = calculateTotals(lineItems, includeGst);
-  const quoteDepositOverride = parseFloat(document.getElementById('quote-deposit-override')?.value) || 0;
-  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : 0;
-
-  document.getElementById('calc-subtotal').textContent = formatCurrency(subtotal);
-  document.getElementById('calc-gst').textContent = includeGst ? formatCurrency(gst) : 'N/A';
-  document.getElementById('calc-total').textContent = formatCurrency(total);
-
-  document.getElementById('calc-deposit').textContent = formatCurrency(depositAmount);
-
-  if (docType === 'final') {
-    const depositPaid = parseFloat(document.getElementById('deposit-paid').value) || 0;
-    const amountDue = total - depositPaid;
-    document.getElementById('calc-deposit-paid').textContent = `-${formatCurrency(depositPaid)}`;
-    document.getElementById('calc-amount-due').textContent = formatCurrency(amountDue);
-  }
-
-  updateContractPricingLink();
-}
-
-// ── Contract pricing link helper ──
-export function updateContractPricingLink() {
-  const docType = getDocType();
-  const lineItems = getLineItems();
-  const linkToggle = document.getElementById('contract-link-lineitems');
-  const totalInput = document.getElementById('contract-total-price');
-  const depositInput = document.getElementById('contract-deposit-amount');
-  if (!linkToggle || !totalInput) return;
-
-  if (linkToggle.checked && docType === 'contract') {
-    const includeGst = document.getElementById('include-gst').checked;
-    const { total } = calculateTotals(lineItems, includeGst);
-    const quoteDepositOverride = parseFloat(document.getElementById('quote-deposit-override')?.value) || 0;
-    const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : 0;
-
-    totalInput.value = total > 0 ? total.toFixed(2) : '';
-    totalInput.disabled = true;
-    depositInput.value = depositAmount > 0 ? depositAmount.toFixed(2) : '';
-    depositInput.disabled = true;
-  } else {
-    totalInput.disabled = false;
-    depositInput.disabled = false;
-  }
 }

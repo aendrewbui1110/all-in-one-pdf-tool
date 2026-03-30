@@ -1,541 +1,474 @@
-/* ═══════════════════════════════════════════════════════════════
-   Perth Steel Patios — UI Wiring & Event Binding
-   ═══════════════════════════════════════════════════════════════ */
-
+import * as store from './store.js';
 import { DEFAULT_TERMS, SCOPE_TEMPLATES, COUNCIL_DRAWINGS_PRICE, COUNCIL_LODGEMENT_PRICE } from './config.js';
-import {
-  getDocType, setDocType, getLineItems, setLineItems, setNextLineId,
-  getDevMode, toggleDevMode, getFormValues, resetForm, claimLineId,
-} from './state.js';
-import { recalculate, calculateTotals, updateContractPricingLink } from './calculations.js';
-import { distributePrice } from './calculations.js';
-import { addLineItem, syncCouncilLineItems } from './line-items.js';
-import { updatePreview, checkQuoteExpiry } from './preview.js';
+import { calculateTotals, calculateDeposit, distributePrice } from './calculations.js';
+import { formatCurrency, formatDateDisplay, today, daysFromNow } from './utils.js';
+import { addLineItem, syncCouncilLineItems, renderLineItems, setAllLineItems } from './line-items.js';
+import { peekNextDocNumber, fetchClients, saveClient, loadClientById } from './db.js';
+import { clearDraft, loadDraft, hasDraft } from './draft.js';
 import { downloadPDF } from './pdf.js';
-import { updateDocNumber, populateClientDropdown, saveCurrentClient, loadClient } from './supabase-ops.js';
-import { debouncedSave, clearDraft } from './draft.js';
 
-// ── Toast Notifications ──
+// Toast notifications
 export function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   toast.textContent = message;
   container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+  setTimeout(() => {
+    toast.classList.add('removing');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
-// ── refreshUI helper — replaces the repeated recalculate/updatePreview/debouncedSave triplet ──
-export function refreshUI() {
-  recalculate();
-  updatePreview();
-  debouncedSave();
+// Two-way data binding for form fields
+function bindFormFields() {
+  document.querySelectorAll('[data-bind]').forEach(el => {
+    const key = el.dataset.bind;
+
+    // Store -> DOM (subscribe)
+    store.subscribe(state => {
+      const val = state[key];
+      if (document.activeElement === el) return; // don't fight the user
+      if (el.type === 'checkbox') { el.checked = !!val; }
+      else if (el.value !== String(val ?? '')) { el.value = val ?? ''; }
+    });
+
+    // DOM -> Store — use 'change' for checkboxes and selects, 'input' for text/number
+    const isSelect = el.tagName === 'SELECT';
+    const event = (el.type === 'checkbox' || isSelect) ? 'change' : 'input';
+    el.addEventListener(event, () => {
+      let value;
+      if (el.type === 'checkbox') value = el.checked;
+      else if (el.type === 'number') value = el.value;
+      else value = el.value;
+      store.set({ [key]: value });
+    });
+  });
 }
 
-// ── Dev Mode Init ──
-export function initDevMode() {
-  const headerActions = document.querySelector('.header-actions');
-  if (!headerActions) return;
+// Calculated totals display
+function bindTotals() {
+  store.subscribe(state => {
+    const { subtotal, gst, total } = calculateTotals(state.lineItems, state.includeGst);
+    const deposit = calculateDeposit(total, state.depositPercent, parseFloat(state.depositFixed) || 0, state.useFixedDeposit);
 
-  const devMode = getDevMode();
-  const btn = document.createElement('button');
-  btn.id = 'btn-dev-mode';
-  btn.className = 'btn-ghost btn-dev-mode' + (devMode ? ' dev-mode-active' : '');
-  btn.title = devMode ? 'Dev Mode ON — Supabase writes disabled' : 'Dev Mode OFF — Supabase writes enabled';
-  btn.innerHTML = `<span class="dev-badge">DEV</span>`;
-  btn.addEventListener('click', () => toggleDevMode(showToast));
-  headerActions.insertBefore(btn, headerActions.firstChild);
+    document.getElementById('calc-subtotal').textContent = formatCurrency(subtotal);
+    document.getElementById('calc-gst').textContent = state.includeGst ? formatCurrency(gst) : 'N/A';
+    document.getElementById('calc-total').textContent = formatCurrency(total);
 
-  const indicator = document.createElement('div');
-  indicator.id = 'dev-mode-indicator';
-  indicator.className = 'dev-mode-indicator';
-  indicator.textContent = 'DEV MODE — Database writes disabled';
-  indicator.style.display = devMode ? '' : 'none';
-  document.body.insertBefore(indicator, document.body.firstChild);
+    // Deposit row
+    const depRow = document.getElementById('calc-deposit-row');
+    const depLabel = document.getElementById('calc-deposit-label');
+    const depValue = document.getElementById('calc-deposit');
+    if (state.docType === 'quote') {
+      depRow.style.display = '';
+      depLabel.textContent = state.useFixedDeposit ? 'Deposit Required' : `Deposit Required (${state.depositPercent}%)`;
+      depValue.textContent = formatCurrency(deposit);
+    } else if (state.docType === 'deposit') {
+      depRow.style.display = '';
+      const override = parseFloat(state.depositAmountOverride);
+      depLabel.textContent = 'Deposit Amount Due';
+      depValue.textContent = formatCurrency(override > 0 ? override : deposit);
+    } else {
+      depRow.style.display = 'none';
+    }
+
+    // Balance row (final invoice)
+    const balRow = document.getElementById('calc-balance-row');
+    const dueRow = document.getElementById('calc-due-row');
+    if (state.docType === 'final') {
+      const paid = parseFloat(state.depositPaid) || 0;
+      balRow.style.display = '';
+      dueRow.style.display = '';
+      document.getElementById('calc-balance').textContent = `-${formatCurrency(paid)}`;
+      document.getElementById('calc-due').textContent = formatCurrency(total - paid);
+    } else {
+      balRow.style.display = 'none';
+      dueRow.style.display = 'none';
+    }
+
+    // Contract pricing link
+    if (state.contractLinkLineItems && state.docType === 'contract') {
+      const totalEl = document.getElementById('field-contractTotalPrice');
+      const depEl = document.getElementById('field-contractDepositAmount');
+      if (totalEl) { totalEl.value = total > 0 ? total.toFixed(2) : ''; totalEl.disabled = true; }
+      if (depEl) { depEl.value = deposit > 0 ? deposit.toFixed(2) : ''; depEl.disabled = true; }
+    } else {
+      const totalEl = document.getElementById('field-contractTotalPrice');
+      const depEl = document.getElementById('field-contractDepositAmount');
+      if (totalEl) totalEl.disabled = false;
+      if (depEl) depEl.disabled = false;
+    }
+  });
 }
 
-// ── Date Initialisation ──
-export function initDocDate() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('doc-date').value = today;
+// Document type switching
+async function switchDocType(type) {
+  store.batch(() => {
+    store.set({ docType: type, terms: DEFAULT_TERMS[type] });
+  });
 
-  const validUntil = new Date();
-  validUntil.setDate(validUntil.getDate() + 30);
-  document.getElementById('doc-valid-until').value = validUntil.toISOString().split('T')[0];
-}
+  // Update doc number
+  const num = await peekNextDocNumber(type);
+  store.set({ docNumber: num });
 
-// ── Terms Initialisation ──
-export function initTerms() {
-  document.getElementById('doc-terms').value = DEFAULT_TERMS[getDocType()];
-}
-
-// ── Document Type Switching ──
-export async function switchDocType(type) {
-  setDocType(type);
-
+  // Update tab UI
   document.querySelectorAll('.doc-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.type === type);
   });
 
-  const validityRow = document.getElementById('validity-row');
-  const depositRefRow = document.getElementById('deposit-ref-row');
-  const finalRefRow = document.getElementById('final-ref-row');
-  const quoteDepositOverrideGroup = document.getElementById('quote-deposit-override-group');
-  const calcDepositRow = document.getElementById('calc-deposit-row');
-  const calcBalanceRow = document.getElementById('calc-balance-row');
-  const calcAmountDueRow = document.getElementById('calc-amount-due-row');
-  const paidStatusRow = document.getElementById('paid-status-row');
-  const contractSpecsSection = document.getElementById('contract-specs-section');
-  const contractPricingSection = document.getElementById('contract-pricing-section');
-  const notesTermsSection = document.getElementById('notes-terms-section');
-  const jobDetailsSection = document.getElementById('job-details-section');
-  const lineItemsSection = document.getElementById('line-items-section');
-  const totalsSection = document.getElementById('totals-section');
-  const gstRow = document.getElementById('gst-row');
+  // Show/hide sections
+  const sections = {
+    'validity-row': type !== 'contract',
+    'deposit-fields': type === 'quote',
+    'deposit-ref-row': type === 'deposit',
+    'final-ref-row': type === 'final',
+    'paid-status-row': type === 'final',
+    'contract-specs': type === 'contract',
+    'contract-pricing': type === 'contract',
+    'notes-terms': type !== 'contract',
+    'line-items-section': type !== 'contract',
+    'totals-section': type !== 'contract',
+    'breakdown-section': type !== 'contract',
+  };
 
-  // Reset to defaults
-  validityRow.style.display = '';
-  depositRefRow.style.display = 'none';
-  finalRefRow.style.display = 'none';
-  quoteDepositOverrideGroup.style.display = '';
-  calcDepositRow.style.display = '';
-  calcBalanceRow.style.display = 'none';
-  calcAmountDueRow.style.display = 'none';
-  paidStatusRow.style.display = 'none';
-  contractSpecsSection.style.display = 'none';
-  contractPricingSection.style.display = 'none';
-  notesTermsSection.style.display = '';
-  jobDetailsSection.style.display = '';
-  lineItemsSection.style.display = '';
-  totalsSection.style.display = '';
-  gstRow.style.display = '';
+  Object.entries(sections).forEach(([id, show]) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
 
-  document.getElementById('mark-as-paid').checked = false;
-  document.getElementById('paid-date-group').style.display = 'none';
-
-  switch (type) {
-    case 'quote':
-      break;
-    case 'deposit':
-      depositRefRow.style.display = '';
-      quoteDepositOverrideGroup.style.display = 'none';
-      document.getElementById('doc-valid-until').closest('.form-group').querySelector('label').textContent = 'Due Date';
-      break;
-    case 'final':
-      finalRefRow.style.display = '';
-      quoteDepositOverrideGroup.style.display = 'none';
-      calcDepositRow.style.display = 'none';
-      calcBalanceRow.style.display = '';
-      calcAmountDueRow.style.display = '';
-      paidStatusRow.style.display = '';
-      document.getElementById('doc-valid-until').closest('.form-group').querySelector('label').textContent = 'Due Date';
-      break;
-    case 'contract':
-      validityRow.style.display = 'none';
-      notesTermsSection.style.display = 'none';
-      contractSpecsSection.style.display = '';
-      contractPricingSection.style.display = '';
-      break;
-  }
-
-  if (type === 'quote') {
-    document.getElementById('doc-valid-until').closest('.form-group').querySelector('label').textContent = 'Valid Until';
-  }
-
-  await updateDocNumber();
-  document.getElementById('doc-terms').value = DEFAULT_TERMS[type];
-
-  refreshUI();
-
-  updateContractPricingLink();
-  checkQuoteExpiry();
+  // Label switching
+  const validLabel = document.getElementById('valid-until-label');
+  if (validLabel) validLabel.textContent = type === 'quote' ? 'Valid For' : 'Due In';
 }
 
-// ── Convert Document ──
-export async function convertTo(targetType) {
-  const sourceValues = getFormValues();
-  const sourceDocNumber = sourceValues.docNumber;
-  const lineItems = getLineItems();
-  const sourceGst = document.getElementById('include-gst').checked;
-
-  const { total } = calculateTotals(lineItems, sourceGst);
-  const quoteDepositOverride = parseFloat(sourceValues.quoteDepositOverride) || 0;
-  const depositAmount = quoteDepositOverride > 0 ? quoteDepositOverride : 0;
+// Convert document
+async function convertTo(targetType) {
+  const s = store.get();
+  const sourceDocNumber = s.docNumber;
+  const { total } = calculateTotals(s.lineItems, s.includeGst);
+  const deposit = calculateDeposit(total, s.depositPercent, parseFloat(s.depositFixed) || 0, s.useFixedDeposit);
 
   await switchDocType(targetType);
 
-  switch (targetType) {
-    case 'deposit':
-      document.getElementById('deposit-quote-ref').value = sourceDocNumber;
-      document.getElementById('deposit-amount-override').value = depositAmount > 0 ? depositAmount.toFixed(2) : '';
-      break;
-    case 'final':
-      document.getElementById('final-quote-ref').value = sourceDocNumber;
-      document.getElementById('deposit-paid').value = depositAmount > 0 ? depositAmount.toFixed(2) : '0';
-      break;
-    case 'contract':
-      document.getElementById('contract-total-price').value = total > 0 ? total.toFixed(2) : '';
-      document.getElementById('contract-deposit-amount').value = depositAmount > 0 ? depositAmount.toFixed(2) : '';
-      break;
-  }
-
-  refreshUI();
-
-  const typeNames = { quote: 'Quote', deposit: 'Deposit Invoice', final: 'Final Invoice', contract: 'Contract' };
-  showToast(`Converted to ${typeNames[targetType]}. Data carried over.`);
-}
-
-// ── New Document ──
-export async function newDocument() {
-  clearDraft();
-  resetForm();
-  document.getElementById('include-gst').checked = true;
-
-  setLineItems([]);
-  setNextLineId(1);
-  addLineItem();
-
-  initDocDate();
-  await updateDocNumber();
-  initTerms();
-
-  recalculate();
-  updatePreview();
-}
-
-// ── Event Binding ──
-export function bindEvents() {
-  const docType = getDocType();
-
-  // Document type tabs
-  document.querySelectorAll('.doc-tab').forEach(tab => {
-    tab.addEventListener('click', () => { switchDocType(tab.dataset.type); });
+  store.batch(() => {
+    if (targetType === 'deposit') {
+      store.set({ depositQuoteRef: sourceDocNumber, depositAmountOverride: deposit > 0 ? deposit.toFixed(2) : '' });
+    } else if (targetType === 'final') {
+      store.set({ finalQuoteRef: sourceDocNumber, depositPaid: deposit > 0 ? deposit.toFixed(2) : '0' });
+    } else if (targetType === 'contract') {
+      store.set({ contractTotalPrice: total > 0 ? total.toFixed(2) : '', contractDepositAmount: deposit > 0 ? deposit.toFixed(2) : '' });
+    }
   });
 
-  // Add line item
-  document.getElementById('btn-add-line').addEventListener('click', () => addLineItem());
+  showToast(`Converted to ${targetType}. Data carried over.`);
+}
 
-  // Download PDF
-  document.getElementById('btn-download-pdf').addEventListener('click', downloadPDF);
+// New document
+async function newDocument() {
+  if (!confirm('Start a new document? Current data will be cleared.')) return;
+  clearDraft();
 
-  // Mobile preview drawer
-  const mobileToggle = document.getElementById('mobile-preview-toggle');
-  const mobileDrawer = document.getElementById('mobile-preview-drawer');
-  const mobileBackdrop = document.getElementById('mobile-drawer-backdrop');
-  const mobileClose = document.getElementById('mobile-drawer-close');
-  const mobileDownload = document.getElementById('btn-download-pdf-mobile');
-  const previewIconEye = document.getElementById('mobile-preview-icon-eye');
-  const previewIconClose = document.getElementById('mobile-preview-icon-close');
-  const previewLabel = document.getElementById('mobile-preview-label');
+  store.batch(() => {
+    const defaults = {
+      docNumber: '', docDate: today(), validityDays: '30', validUntil: '',
+      depositPercent: 30, depositFixed: '', useFixedDeposit: false,
+      clientName: '', clientAddress: '', clientPhone: '', clientEmail: '',
+      jobTitle: '', jobSite: '', syncSiteAddress: true, scopeTemplate: '', jobDescription: '',
+      notes: '', terms: DEFAULT_TERMS.quote,
+      includeGst: true, statusCode: 'L', offBooks: false,
+      lineItems: [], nextLineId: 1,
+      depositQuoteRef: '', depositAmountOverride: '',
+      finalQuoteRef: '', depositPaid: 0, markAsPaid: false, paidDate: '',
+      contractStructure: '', contractDimensions: '', contractMaterial: '', contractColour: '',
+      contractGroundPrep: '', contractCouncil: '', contractEstStart: '', contractEstDuration: '',
+      contractWarranty: '10-year structural warranty', contractTotalPrice: '', contractDepositAmount: '',
+      contractPaymentMethod: 'Bank Transfer', contractLinkLineItems: true,
+      councilDrawings: 'none', councilLodgement: 'none',
+      breakdownTotal: '', breakdownStyle: 'skillion',
+    };
+    store.set(defaults);
+  });
 
-  function openMobileDrawer() {
-    mobileDrawer.classList.add('is-open');
-    mobileBackdrop.classList.add('is-open');
-    mobileToggle.classList.add('is-open');
-    previewIconEye.style.display = 'none';
-    previewIconClose.style.display = '';
-    previewLabel.textContent = 'Close';
+  await switchDocType('quote');
+  addLineItem();
+  showToast('New document started');
+}
+
+// Populate client dropdown
+async function populateClients() {
+  const select = document.getElementById('client-select');
+  if (!select) return;
+  const clients = await fetchClients();
+  select.innerHTML = '<option value="">Load saved client...</option>';
+  clients.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = store.get().devMode ? c.name : c.id;
+    opt.textContent = c.name;
+    select.appendChild(opt);
+  });
+}
+
+// Validity date auto-calculation
+function bindValidityCalc() {
+  let prevKey = '';
+  store.subscribe(state => {
+    const key = `${state.docDate}|${state.validityDays}`;
+    if (key === prevKey) return;
+    prevKey = key;
+
+    const customDate = document.getElementById('field-validUntil');
+    const display = document.getElementById('validity-calc-display');
+
+    if (state.validityDays === 'custom') {
+      if (customDate) customDate.style.display = '';
+      if (display) display.style.display = 'none';
+    } else {
+      if (customDate) customDate.style.display = 'none';
+      if (display) display.style.display = '';
+
+      // Calculate date from docDate + days
+      const days = parseInt(state.validityDays) || 30;
+      if (state.docDate) {
+        const base = new Date(state.docDate + 'T00:00:00');
+        base.setDate(base.getDate() + days);
+        const calculated = base.toISOString().split('T')[0];
+        if (state.validUntil !== calculated) {
+          store.set({ validUntil: calculated });
+        }
+        if (display) {
+          display.textContent = formatDateDisplay(calculated);
+        }
+      }
+    }
+  });
+}
+
+// Site address sync — guarded to avoid infinite loop
+function bindSiteSync() {
+  let lastSyncedAddress = '';
+  store.subscribe(state => {
+    const siteField = document.querySelector('[data-bind="jobSite"]');
+    if (!siteField) return;
+    if (state.syncSiteAddress) {
+      siteField.disabled = true;
+      const addr = state.clientAddress || '';
+      if (addr !== lastSyncedAddress) {
+        lastSyncedAddress = addr;
+        if (state.jobSite !== addr) {
+          store.set({ jobSite: addr });
+        }
+      }
+    } else {
+      siteField.disabled = false;
+      lastSyncedAddress = '';
+    }
+  });
+}
+
+// Mobile preview drawer
+function bindMobileDrawer() {
+  const toggle = document.getElementById('mobile-preview-toggle');
+  const drawer = document.getElementById('mobile-drawer');
+  const backdrop = document.getElementById('mobile-backdrop');
+  const closeBtn = document.getElementById('mobile-drawer-close');
+  if (!toggle || !drawer) return;
+
+  function open() {
+    drawer.classList.add('open');
+    backdrop.classList.add('open');
+    toggle.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
-
-  function closeMobileDrawer() {
-    mobileDrawer.classList.remove('is-open');
-    mobileBackdrop.classList.remove('is-open');
-    mobileToggle.classList.remove('is-open');
-    previewIconEye.style.display = '';
-    previewIconClose.style.display = 'none';
-    previewLabel.textContent = 'Preview';
+  function close() {
+    drawer.classList.remove('open');
+    backdrop.classList.remove('open');
+    toggle.classList.remove('open');
     document.body.style.overflow = '';
   }
 
-  if (mobileToggle) {
-    mobileToggle.addEventListener('click', () => {
-      mobileDrawer.classList.contains('is-open') ? closeMobileDrawer() : openMobileDrawer();
-    });
-  }
-  if (mobileClose) mobileClose.addEventListener('click', closeMobileDrawer);
-  if (mobileBackdrop) mobileBackdrop.addEventListener('click', closeMobileDrawer);
-  if (mobileDownload) mobileDownload.addEventListener('click', downloadPDF);
+  toggle.addEventListener('click', () => drawer.classList.contains('open') ? close() : open());
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  if (backdrop) backdrop.addEventListener('click', close);
+}
+
+export function initUI() {
+  // Bind form fields
+  bindFormFields();
+  bindTotals();
+  bindValidityCalc();
+  bindSiteSync();
+  bindMobileDrawer();
+
+  // Doc type tabs
+  document.querySelectorAll('.doc-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchDocType(tab.dataset.type));
+  });
+
+  // Line items — only re-render when items are added/removed (not on value edits)
+  const liContainer = document.getElementById('line-items-container');
+  let prevLineItemIds = '';
+  store.subscribe(state => {
+    const currentIds = state.lineItems.map(i => i.id).join(',');
+    if (currentIds !== prevLineItemIds) {
+      prevLineItemIds = currentIds;
+      renderLineItems(liContainer);
+    }
+  });
+
+  document.getElementById('btn-add-line').addEventListener('click', () => addLineItem());
+
+  // PDF download
+  document.getElementById('btn-download').addEventListener('click', () => downloadPDF(showToast));
+  const mobileDownload = document.getElementById('btn-download-mobile');
+  if (mobileDownload) mobileDownload.addEventListener('click', () => downloadPDF(showToast));
 
   // New document
-  document.getElementById('btn-new-doc').addEventListener('click', newDocument);
+  document.getElementById('btn-new').addEventListener('click', newDocument);
 
-  // GST toggle
-  document.getElementById('include-gst').addEventListener('change', () => {
-    refreshUI();
-  });
-
-  // Paid toggle
-  document.getElementById('mark-as-paid').addEventListener('change', (e) => {
-    const paidDateGroup = document.getElementById('paid-date-group');
-    paidDateGroup.style.display = e.target.checked ? '' : 'none';
-    if (e.target.checked && !document.getElementById('paid-date').value) {
-      document.getElementById('paid-date').value = new Date().toISOString().split('T')[0];
-    }
-    updatePreview();
-    debouncedSave();
-  });
-
-  document.getElementById('paid-date').addEventListener('input', () => {
-    updatePreview();
-    debouncedSave();
-  });
-
-  // Form change listeners for live preview
-  const formInputs = '#doc-number, #doc-date, #doc-valid-until, #quote-deposit-override, ' +
-    '#client-name, #client-address, #client-phone, #client-email, ' +
-    '#job-title, #job-site, #job-description, #doc-notes, #doc-terms, ' +
-    '#deposit-quote-ref, #deposit-amount-override, #final-quote-ref, #deposit-paid, ' +
-    '#contract-structure, #contract-dimensions, #contract-material, #contract-colour, ' +
-    '#contract-ground-prep, #contract-council, #contract-est-start, #contract-est-duration, ' +
-    '#contract-warranty, #contract-total-price, #contract-deposit-amount, #contract-payment-method';
-
-  formInputs.split(', ').forEach(selector => {
-    const el = document.querySelector(selector);
-    if (el) {
-      el.addEventListener('input', () => {
-        refreshUI();
-      });
-    }
-  });
-
-  // Sync Site Address with Client Address
-  const clientAddress = document.getElementById('client-address');
-  const jobSite = document.getElementById('job-site');
-  const syncSiteToggle = document.getElementById('sync-site-address');
-  
-  if (syncSiteToggle && clientAddress && jobSite) {
-    const handleSync = () => {
-      if (syncSiteToggle.checked) {
-        jobSite.value = clientAddress.value;
-        jobSite.disabled = true;
-        jobSite.style.opacity = '0.7';
-        jobSite.style.cursor = 'not-allowed';
-      } else {
-        jobSite.disabled = false;
-        jobSite.style.opacity = '1';
-        jobSite.style.cursor = 'text';
-      }
-      refreshUI();
-    };
-
-    syncSiteToggle.addEventListener('change', handleSync);
-    clientAddress.addEventListener('input', () => {
-      if (syncSiteToggle.checked) handleSync();
-    });
-
-    setupOsmAutocomplete(clientAddress, () => {
-      if (syncSiteToggle.checked) handleSync();
-      refreshUI();
-    });
-    setupOsmAutocomplete(jobSite, refreshUI);
-  }
-
-  // Clear validation on client name input
-  document.getElementById('client-name').addEventListener('input', () => {
-    const group = document.getElementById('client-name').closest('.form-group');
-    group.classList.remove('has-error');
-    document.getElementById('val-client-name').style.display = 'none';
-  });
-
-  // Keyboard shortcut: Ctrl+P to download PDF
+  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-      e.preventDefault();
-      downloadPDF();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); downloadPDF(showToast); }
+  });
+
+  // Price breakdown
+  document.getElementById('btn-breakdown').addEventListener('click', () => {
+    const s = store.get();
+    const total = parseFloat(s.breakdownTotal) || 0;
+    if (total <= 0) { showToast('Enter the patio cost first', 'error'); return; }
+
+    const hasContent = s.lineItems.some(i => i.description?.trim() || i.price > 0);
+    if (hasContent && !confirm('This will overwrite your current line items. Continue?')) return;
+
+    const items = distributePrice(total, s.breakdownStyle);
+    const mapped = items.map((item, i) => ({ id: i + 1, ...item }));
+    setAllLineItems(mapped);
+    syncCouncilLineItems();
+
+    const drawings = s.councilDrawings === 'psp' ? COUNCIL_DRAWINGS_PRICE : 0;
+    const lodgement = s.councilLodgement === 'psp' ? COUNCIL_LODGEMENT_PRICE : 0;
+    const council = drawings + lodgement;
+    if (council > 0) showToast(`$${total.toFixed(2)} patio + $${council.toFixed(2)} council = $${(total + council).toFixed(2)} total`);
+    else showToast(`Line items generated from $${total.toFixed(2)}`);
+  });
+
+  // Council dropdowns — sync line items when council selections change
+  let prevCouncil = '';
+  store.subscribe(state => {
+    const key = `${state.councilDrawings}|${state.councilLodgement}`;
+    if (key !== prevCouncil) {
+      prevCouncil = key;
+      syncCouncilLineItems();
     }
   });
 
-  // Price breakdown generator
-  const breakdownBtn = document.getElementById('btn-generate-breakdown');
-  if (breakdownBtn) {
-    breakdownBtn.addEventListener('click', () => {
-      breakdownBtn.blur(); // Fix sticky hover state
-
-      const patioTotal = parseFloat(document.getElementById('breakdown-total').value) || 0;
-      if (patioTotal <= 0) {
-        showToast('Enter the patio cost first', 'error');
-        return;
-      }
-
-      const currentItems = getLineItems();
-      const hasContent = currentItems.some(i => i.description.trim() || i.price > 0);
-      if (hasContent && !confirm('This will overwrite your current line items. Continue?')) {
-        return;
-      }
-
-      const style = document.getElementById('breakdown-style').value;
-      const items = distributePrice(patioTotal, style);
-
-      // Replace existing line items with patio breakdown
-      setLineItems([]);
-      setNextLineId(1);
-      items.forEach(item => {
-        getLineItems().push({ id: claimLineId(), ...item });
-      });
-
-      // Add council line items on top (if PSP is handling)
-      syncCouncilLineItems();
-
-      refreshUI();
-
-      // Calculate council add-on for toast
-      const drawings = document.getElementById('council-drawings')?.value || 'none';
-      const lodgement = document.getElementById('council-lodgement')?.value || 'none';
-      let councilCost = 0;
-      if (drawings === 'psp') councilCost += COUNCIL_DRAWINGS_PRICE;
-      if (lodgement === 'psp') councilCost += COUNCIL_LODGEMENT_PRICE;
-
-      if (councilCost > 0) {
-        showToast(`$${patioTotal.toFixed(2)} patio + $${councilCost.toFixed(2)} council = $${(patioTotal + councilCost).toFixed(2)} total`);
-      } else {
-        showToast(`Line items generated from $${patioTotal.toFixed(2)}`);
-      }
-    });
-  }
-
-  // Council dropdowns — auto-add/remove line items
-  const councilDrawings = document.getElementById('council-drawings');
-  const councilLodgement = document.getElementById('council-lodgement');
-  if (councilDrawings) {
-    councilDrawings.addEventListener('change', () => {
-      syncCouncilLineItems();
-      refreshUI();
-    });
-  }
-  if (councilLodgement) {
-    councilLodgement.addEventListener('change', () => {
-      syncCouncilLineItems();
-      refreshUI();
-    });
-  }
+  // Scope template
+  document.getElementById('field-scopeTemplate')?.addEventListener('change', (e) => {
+    const key = e.target.value;
+    if (!key) return;
+    const s = store.get();
+    if (s.jobDescription?.trim() && !confirm('Replace current description with template?')) {
+      e.target.value = '';
+      return;
+    }
+    store.set({ jobDescription: SCOPE_TEMPLATES[key], scopeTemplate: key });
+    e.target.value = '';
+  });
 
   // Convert dropdown
   const convertBtn = document.getElementById('btn-convert');
   const convertMenu = document.getElementById('convert-menu');
   if (convertBtn && convertMenu) {
-    convertBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      convertMenu.classList.toggle('is-open');
-    });
-    document.addEventListener('click', () => convertMenu.classList.remove('is-open'));
+    convertBtn.addEventListener('click', (e) => { e.stopPropagation(); convertMenu.classList.toggle('open'); });
+    document.addEventListener('click', () => convertMenu.classList.remove('open'));
     convertMenu.querySelectorAll('.convert-option').forEach(opt => {
       opt.addEventListener('click', async () => {
-        convertMenu.classList.remove('is-open');
-        const targetType = opt.dataset.convert;
-        if (targetType === getDocType()) { showToast('Already on this type', 'error'); return; }
-        if (confirm(`Convert current ${getDocType()} to ${targetType}? Data will carry over.`)) {
-          await convertTo(targetType);
-        }
+        convertMenu.classList.remove('open');
+        const target = opt.dataset.convert;
+        if (target === store.get().docType) { showToast('Already on this type', 'error'); return; }
+        if (confirm(`Convert to ${target}? Data will carry over.`)) await convertTo(target);
       });
     });
   }
 
-  // Client history
-  const clientSelect = document.getElementById('client-history-select');
-  if (clientSelect) {
-    clientSelect.addEventListener('change', async () => {
-      await loadClient(clientSelect.value, refreshUI);
-      clientSelect.value = '';
-    });
-  }
-  const saveClientBtn = document.getElementById('btn-save-client');
-  if (saveClientBtn) saveClientBtn.addEventListener('click', saveCurrentClient);
+  // Client save/load
+  document.getElementById('btn-save-client')?.addEventListener('click', async () => {
+    const s = store.get();
+    if (!s.clientName?.trim()) { showToast('Enter a client name first', 'error'); return; }
+    await saveClient({ name: s.clientName, address: s.clientAddress, phone: s.clientPhone, email: s.clientEmail });
+    await populateClients();
+    showToast(`Saved: ${s.clientName}`);
+  });
 
-  // Scope template dropdown
-  const scopeSelect = document.getElementById('scope-template');
-  if (scopeSelect) {
-    scopeSelect.addEventListener('change', () => {
-      const key = scopeSelect.value;
-      if (!key) return;
-      const desc = document.getElementById('job-description');
-      const current = desc.value.trim();
-      if (current && !confirm('Replace current description with template?')) {
-        scopeSelect.value = '';
-        return;
-      }
-      desc.value = SCOPE_TEMPLATES[key];
-      scopeSelect.value = '';
-      refreshUI();
-    });
-  }
-
-  // Contract pricing link
-  const linkToggle = document.getElementById('contract-link-lineitems');
-  if (linkToggle) {
-    linkToggle.addEventListener('change', () => {
-      updateContractPricingLink();
-      updatePreview();
-      debouncedSave();
-    });
-  }
-
-  // Expiry check on date change
-  document.getElementById('doc-valid-until').addEventListener('input', checkQuoteExpiry);
-}
-
-// ── OpenStreetMap (Photon) Address Autocomplete ──
-export function setupOsmAutocomplete(inputEl, onSelect) {
-  if (!inputEl) return;
-  const wrapper = document.createElement('div');
-  wrapper.className = 'osm-autocomplete-wrapper';
-  inputEl.parentNode.insertBefore(wrapper, inputEl);
-  wrapper.appendChild(inputEl);
-  const dropdown = document.createElement('ul');
-  dropdown.className = 'osm-autocomplete-dropdown';
-  wrapper.appendChild(dropdown);
-  let debounceTimer;
-  inputEl.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    const query = inputEl.value;
-    if (query.length < 3) {
-      dropdown.classList.remove('active');
-      return;
+  document.getElementById('client-select')?.addEventListener('change', async (e) => {
+    const id = e.target.value;
+    if (!id) return;
+    const client = await loadClientById(id);
+    if (client) {
+      store.set({ clientName: client.name, clientAddress: client.address || '', clientPhone: client.phone || '', clientEmail: client.email || '' });
+      showToast(`Loaded: ${client.name}`);
     }
-    debounceTimer = setTimeout(async () => {
-      try {
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&country=AU&lat=-31.9522&lon=115.8614`);
-        const data = await res.json();
-        dropdown.innerHTML = '';
-        if (data.features && data.features.length > 0) {
-          data.features.forEach(f => {
-            const p = f.properties;
-            const parts = [];
-            if (p.housenumber) parts.push(p.housenumber);
-            if (p.street) parts.push(p.street);
-            if (p.name && !p.street) parts.push(p.name);
-            let streetAddr = parts.join(' ');
-            const city = p.city || p.town || p.suburb || p.district || '';
-            const state = p.state || '';
-            const postcode = p.postcode || '';
-            let fullAddress = streetAddr || city;
-            if (city && fullAddress !== city) fullAddress += `, ${city}`;
-            if (state) fullAddress += ` ${state}`;
-            if (postcode) fullAddress += ` ${postcode}`;
-            const li = document.createElement('li');
-            li.textContent = fullAddress.trim();
-            li.addEventListener('click', () => {
-              inputEl.value = fullAddress.trim();
-              dropdown.classList.remove('active');
-              if (onSelect) onSelect(inputEl.value);
-            });
-            dropdown.appendChild(li);
-          });
-          dropdown.classList.add('active');
-        } else {
-          dropdown.classList.remove('active');
-        }
-      } catch (err) {
-        console.error('OSM Autocomplete Error:', err);
-      }
-    }, 300);
+    e.target.value = '';
   });
-  document.addEventListener('click', (e) => {
-    if (!wrapper.contains(e.target)) {
-      dropdown.classList.remove('active');
-    }
+
+  // Paid toggle
+  store.subscribe(state => {
+    const paidGroup = document.getElementById('paid-date-group');
+    if (paidGroup) paidGroup.style.display = state.markAsPaid ? '' : 'none';
+    if (state.markAsPaid && !state.paidDate) store.set({ paidDate: today() });
   });
-  inputEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') dropdown.classList.remove('active');
+
+  // Deposit mode toggle
+  store.subscribe(state => {
+    const pctField = document.getElementById('field-depositPercent');
+    const fixedField = document.getElementById('field-depositFixed');
+    if (pctField) pctField.closest('.form-group').style.display = state.useFixedDeposit ? 'none' : '';
+    if (fixedField) fixedField.closest('.form-group').style.display = state.useFixedDeposit ? '' : 'none';
   });
+
+  // Dev mode
+  const devBtn = document.getElementById('btn-dev-mode');
+  const devIndicator = document.getElementById('dev-mode-indicator');
+  if (devBtn) {
+    devBtn.addEventListener('click', () => {
+      const newVal = !store.get().devMode;
+      store.set({ devMode: newVal });
+      localStorage.setItem('psp-dev-mode', newVal);
+      devBtn.classList.toggle('dev-active', newVal);
+      if (devIndicator) devIndicator.style.display = newVal ? '' : 'none';
+      showToast(newVal ? 'Dev Mode ON' : 'Dev Mode OFF');
+    });
+    devBtn.classList.toggle('dev-active', store.get().devMode);
+    if (devIndicator) devIndicator.style.display = store.get().devMode ? '' : 'none';
+  }
+
+  // Quote expiry check
+  store.subscribe(state => {
+    const row = document.getElementById('validity-row');
+    if (!row) return;
+    const isExpired = state.docType === 'quote' && state.validUntil && new Date(state.validUntil + 'T23:59:59') < new Date();
+    row.classList.toggle('expired-highlight', isExpired);
+  });
+
+  // Draft recovery
+  if (hasDraft()) {
+    const banner = document.createElement('div');
+    banner.className = 'draft-banner';
+    banner.innerHTML = `<span>Unsaved document from last session</span><div class="draft-actions"><button class="btn-restore" id="btn-restore-draft">Restore</button><button class="btn-dismiss" id="btn-dismiss-draft">Dismiss</button></div>`;
+    document.getElementById('form-panel').prepend(banner);
+    document.getElementById('btn-restore-draft').addEventListener('click', () => {
+      loadDraft();
+      banner.remove();
+      const s = store.get();
+      switchDocType(s.docType);
+      showToast('Draft restored');
+    });
+    document.getElementById('btn-dismiss-draft').addEventListener('click', () => {
+      banner.remove();
+      clearDraft();
+    });
+  }
+
+  // Initial population
+  populateClients();
 }

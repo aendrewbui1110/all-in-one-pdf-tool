@@ -1,21 +1,30 @@
 import './style.css';
-import { initDevMode, initDocDate, initTerms, bindEvents } from './ui.js';
-import { updateDocNumber, populateClientDropdown } from './supabase-ops.js';
+import * as store from './store.js';
+import { today, daysFromNow } from './utils.js';
+import { DEFAULT_TERMS } from './config.js';
+import { peekNextDocNumber } from './db.js';
 import { addLineItem } from './line-items.js';
-import { showDraftRecoveryBanner } from './draft.js';
-import { recalculate } from './calculations.js';
-import { updatePreview, checkQuoteExpiry } from './preview.js';
+import { initPreview } from './preview.js';
+import { initUI } from './ui.js';
+import './draft.js'; // registers auto-save subscriber
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initDevMode();
-  initDocDate();
-  await updateDocNumber();
-  initTerms();
+  // Set initial date and terms — validUntil auto-calculates from validityDays
+  store.batch(() => {
+    store.set({
+      docDate: today(),
+      terms: DEFAULT_TERMS.quote,
+    });
+  });
+
+  // Get initial doc number
+  const docNumber = await peekNextDocNumber('quote');
+  store.set({ docNumber });
+
+  // Add initial empty line item
   addLineItem();
-  recalculate();
-  updatePreview();
-  bindEvents();
-  await populateClientDropdown();
-  checkQuoteExpiry();
-  showDraftRecoveryBanner();
+
+  // Initialize UI and preview
+  initUI();
+  initPreview();
 });

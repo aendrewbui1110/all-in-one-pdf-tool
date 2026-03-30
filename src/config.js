@@ -1,18 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════
-   Perth Steel Patios — Configuration & Constants
-   ═══════════════════════════════════════════════════════════════ */
-
-export const logoUrl = '/logo.svg';
-
-// ── Document Number Prefixes ──
-export const DOC_PREFIXES = {
-  quote: 'PSP-Q',
-  deposit: 'PSP-DEP',
-  final: 'PSP-INV',
-  contract: 'PSP-CON',
-};
-
-// ── Business Details ──
 export const BUSINESS = {
   name: 'Perth Steel Patios',
   abn: '81 696 071 664',
@@ -27,45 +12,52 @@ export const BUSINESS = {
   },
 };
 
-// ── Default Payment Terms ──
+export const DOC_PREFIXES = {
+  quote: 'PSP-Q',
+  deposit: 'PSP-DEP',
+  final: 'PSP-INV',
+  contract: 'PSP-CON',
+};
+
+export const DOC_TITLES = {
+  quote: 'Quote',
+  deposit: 'Tax Invoice',
+  final: 'Tax Invoice',
+  contract: 'Contract Agreement',
+};
+
 export const DEFAULT_TERMS = {
-  quote: `• This quote is valid for 30 days from the date of issue.
-• A 30% deposit is required to confirm your booking and lock in your start date.
-• Remaining balance is due on completion of works.
-• Prices include GST where applicable.
-• Any variations to the scope of works will require written approval and will be quoted separately.
-• Exclusions: This quote does not include council fees, engineering, electrical work, or removal of existing structures unless explicitly stated above.
-• To accept this quote, please sign and return a copy along with the deposit payment.`,
-  deposit: `• Payment of this deposit confirms your booking and locks your start date.
-• Deposit is non-refundable once materials have been ordered.
-• The remaining balance will be invoiced upon completion of works.
-• Prices include GST where applicable.
-• Please reference the invoice number when making payment.`,
-  final: `• Payment is due upon completion of works.
-• Please reference the invoice number when making payment.
-• Payment can be made via bank transfer or as otherwise agreed.
-• Prices include GST where applicable.
-• Warranty activation is subject to full payment being received.`,
+  quote: `\u2022 This quote is valid for 30 days from the date of issue.
+\u2022 A deposit is required to confirm your booking and lock in your start date.
+\u2022 Remaining balance is due on completion of works.
+\u2022 Prices include GST where applicable.
+\u2022 Any variations to the scope of works will require written approval and will be quoted separately.
+\u2022 Exclusions: This quote does not include council fees, engineering, electrical work, or removal of existing structures unless explicitly stated above.
+\u2022 To accept this quote, please sign and return a copy along with the deposit payment.`,
+  deposit: `\u2022 Payment of this deposit confirms your booking and locks your start date.
+\u2022 Deposit is non-refundable once materials have been ordered.
+\u2022 The remaining balance will be invoiced upon completion of works.
+\u2022 Prices include GST where applicable.
+\u2022 Please reference the invoice number when making payment.`,
+  final: `\u2022 Payment is due upon completion of works.
+\u2022 Please reference the invoice number when making payment.
+\u2022 Payment can be made via bank transfer or as otherwise agreed.
+\u2022 Prices include GST where applicable.
+\u2022 Warranty activation is subject to full payment being received.`,
   contract: '',
 };
 
-// ── Scope of Work Templates ──
 export const SCOPE_TEMPLATES = {
-  skillion: `Supply and installation of a **skillion-style** steel patio roof with a single-slope fall for effective water runoff. Structure built with steel framework including posts, beams, and purlins, finished with Colorbond roofing sheets.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable. All works to comply with local council requirements.`,
-
-  gable: `Supply and installation of a **gable-style** steel patio roof featuring a pitched A-frame design with symmetrical roof slopes meeting at a central ridge. Structure built with steel framework including posts, beams, rafters, and purlins, finished with Colorbond roofing sheets and gable infill panels.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable. All works to comply with local council requirements.`,
-
-  flat: `Supply and installation of a **flat roof** steel patio with a minimal slope for water drainage. Structure built with steel framework including posts, beams, and purlins, finished with Colorbond roofing sheets.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable. All works to comply with local council requirements.`,
-
-  'dutch-gable': `Supply and installation of a **Dutch gable-style** steel patio roof combining a gable top section with a hip roof base, creating a distinctive and elegant roofline. Structure built with steel framework including posts, beams, rafters, and purlins, finished with Colorbond roofing sheets and decorative gable infill.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable. All works to comply with local council requirements.`,
-
-  carport: `Supply and installation of a freestanding steel **carport** structure designed to provide covered parking and vehicle protection. Structure built with steel framework including posts, beams, and purlins, finished with Colorbond roofing sheets.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable. All works to comply with local council requirements.`,
+  skillion: `Supply and installation of a skillion-style steel patio roof with a single-slope fall for effective water runoff. Structure built with steel framework including posts, beams, and purlins, finished with Colorbond roofing sheets.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable.`,
+  gable: `Supply and installation of a gable-style steel patio roof featuring a pitched A-frame design with symmetrical roof slopes meeting at a central ridge. Structure built with steel framework including posts, beams, rafters, and purlins, finished with Colorbond roofing sheets and gable infill panels.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable.`,
+  flat: `Supply and installation of a flat roof steel patio with a minimal slope for water drainage. Structure built with steel framework including posts, beams, and purlins, finished with Colorbond roofing sheets.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable.`,
+  'dutch-gable': `Supply and installation of a Dutch gable-style steel patio roof combining a gable top section with a hip roof base. Structure built with steel framework including posts, beams, rafters, and purlins, finished with Colorbond roofing sheets and decorative gable infill.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable.`,
+  carport: `Supply and installation of a freestanding steel carport structure designed to provide covered parking and vehicle protection. Structure built with steel framework including posts, beams, and purlins, finished with Colorbond roofing sheets.\n\nAll steelwork and fixings to be structurally engineered and compliant with Australian Standards. Includes concrete footings, flashings, guttering, and full site cleanup on completion.\n\nCouncil approval and engineering documentation included where applicable.`,
 };
 
-// ── Price Breakdown Presets ──
-export const PRICE_BREAKDOWN_PRESETS = {
+export const PRICE_PRESETS = {
   skillion: [
-    { description: 'Labour — installation & site works', pct: 32 },
+    { description: 'Labour \u2014 installation & site works', pct: 32 },
     { description: 'Steel framework (posts, beams, purlins)', pct: 22 },
     { description: 'Colorbond roofing sheets', pct: 15 },
     { description: 'Concrete footings', pct: 10 },
@@ -76,7 +68,7 @@ export const PRICE_BREAKDOWN_PRESETS = {
     { description: 'Site cleanup & waste removal', pct: 2 },
   ],
   gable: [
-    { description: 'Labour — installation & site works', pct: 30 },
+    { description: 'Labour \u2014 installation & site works', pct: 30 },
     { description: 'Steel framework (posts, beams, rafters, purlins)', pct: 23 },
     { description: 'Colorbond roofing sheets', pct: 14 },
     { description: 'Gable infill panels', pct: 5 },
@@ -88,7 +80,7 @@ export const PRICE_BREAKDOWN_PRESETS = {
     { description: 'Site cleanup & waste removal', pct: 2 },
   ],
   flat: [
-    { description: 'Labour — installation & site works', pct: 33 },
+    { description: 'Labour \u2014 installation & site works', pct: 33 },
     { description: 'Steel framework (posts, beams, purlins)', pct: 22 },
     { description: 'Colorbond roofing sheets', pct: 15 },
     { description: 'Concrete footings', pct: 10 },
@@ -99,7 +91,7 @@ export const PRICE_BREAKDOWN_PRESETS = {
     { description: 'Site cleanup & waste removal', pct: 2 },
   ],
   'dutch-gable': [
-    { description: 'Labour — installation & site works', pct: 30 },
+    { description: 'Labour \u2014 installation & site works', pct: 30 },
     { description: 'Steel framework (posts, beams, rafters, purlins)', pct: 22 },
     { description: 'Colorbond roofing sheets', pct: 14 },
     { description: 'Decorative gable infill', pct: 6 },
@@ -111,7 +103,7 @@ export const PRICE_BREAKDOWN_PRESETS = {
     { description: 'Site cleanup & waste removal', pct: 2 },
   ],
   carport: [
-    { description: 'Labour — installation & site works', pct: 30 },
+    { description: 'Labour \u2014 installation & site works', pct: 30 },
     { description: 'Steel framework (posts, beams, purlins)', pct: 25 },
     { description: 'Colorbond roofing sheets', pct: 15 },
     { description: 'Concrete footings', pct: 12 },
@@ -123,43 +115,7 @@ export const PRICE_BREAKDOWN_PRESETS = {
   ],
 };
 
-// ── Council Pricing ──
 export const COUNCIL_DRAWINGS_DESC = 'Structural drawings & engineering (council)';
 export const COUNCIL_LODGEMENT_DESC = 'Council lodgement & submission';
 export const COUNCIL_DRAWINGS_PRICE = 850;
 export const COUNCIL_LODGEMENT_PRICE = 250;
-
-// ── Field Configuration ──
-export const FIELD_CONFIG = [
-  { id: 'doc-number', key: 'docNumber', default: '' },
-  { id: 'doc-date', key: 'docDate', default: '' },
-  { id: 'doc-valid-until', key: 'validUntil', default: '' },
-  { id: 'quote-deposit-override', key: 'quoteDepositOverride', default: '' },
-  { id: 'client-name', key: 'clientName', default: '' },
-  { id: 'client-address', key: 'clientAddress', default: '' },
-  { id: 'client-phone', key: 'clientPhone', default: '' },
-  { id: 'client-email', key: 'clientEmail', default: '' },
-  { id: 'job-title', key: 'jobTitle', default: '' },
-  { id: 'job-site', key: 'jobSite', default: '' },
-  { id: 'job-description', key: 'jobDescription', default: '' },
-  { id: 'doc-notes', key: 'notes', default: '' },
-  { id: 'doc-terms', key: 'terms', default: '' },
-  { id: 'deposit-quote-ref', key: 'depositQuoteRef', default: '' },
-  { id: 'deposit-amount-override', key: 'depositAmountOverride', default: '' },
-  { id: 'final-quote-ref', key: 'finalQuoteRef', default: '' },
-  { id: 'deposit-paid', key: 'depositPaid', default: '0' },
-  { id: 'contract-structure', key: 'contractStructure', default: '' },
-  { id: 'contract-dimensions', key: 'contractDimensions', default: '' },
-  { id: 'contract-material', key: 'contractMaterial', default: '' },
-  { id: 'contract-colour', key: 'contractColour', default: '' },
-  { id: 'contract-ground-prep', key: 'contractGroundPrep', default: '' },
-  { id: 'contract-council', key: 'contractCouncil', default: '' },
-  { id: 'contract-est-start', key: 'contractEstStart', default: '' },
-  { id: 'contract-est-duration', key: 'contractEstDuration', default: '' },
-  { id: 'contract-warranty', key: 'contractWarranty', default: '10-year structural warranty' },
-  { id: 'contract-total-price', key: 'contractTotalPrice', default: '' },
-  { id: 'contract-deposit-amount', key: 'contractDepositAmount', default: '' },
-  { id: 'contract-payment-method', key: 'contractPaymentMethod', default: 'Bank Transfer' },
-  { id: 'council-drawings', key: 'councilDrawings', default: 'none' },
-  { id: 'council-lodgement', key: 'councilLodgement', default: 'none' },
-];

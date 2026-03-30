@@ -1,602 +1,300 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Perth Steel Patios — Document Generator</title>
-    <meta name="description"
-        content="Generate professional quotes, deposit invoices and final invoices for Perth Steel Patios." />
-    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <!-- OpenStreetMap (Photon) Autocomplete handles suggestions natively -->
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap"
-        rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" defer></script>
-    <link rel="stylesheet" href="/src/style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perth Steel Patios - Document Generator</title>
+  <meta name="description" content="Generate professional quotes, invoices and contracts for Perth Steel Patios." />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
-
 <body>
+  <a href="#form-panel" class="sr-only skip-link">Skip to form</a>
 
-    <a href="#form-panel" class="sr-only skip-link">Skip to form</a>
+  <!-- DEV MODE INDICATOR -->
+  <div id="dev-mode-indicator" class="dev-indicator" style="display:none">DEV MODE - Database writes disabled</div>
 
-    <!-- ═══════════════ TOP HEADER BAR ═══════════════ -->
-    <header id="app-header">
-        <div class="header-brand">
-            <div class="brand-icon">
-                <img src="/logo.svg" alt="Perth Steel Patios" class="header-logo" />
-            </div>
-            <div>
-                <h1>Perth Steel Patios</h1>
-                <span class="header-subtitle">Document Generator</span>
-            </div>
-        </div>
-        <div class="header-actions">
-            <button id="btn-new-doc" class="btn-ghost" title="New Document">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="12" y1="18" x2="12" y2="12" />
-                    <line x1="9" y1="15" x2="15" y2="15" />
-                </svg>
-                New
-            </button>
-            <div class="convert-dropdown" id="convert-dropdown">
-                <button id="btn-convert" class="btn-ghost" title="Convert current document">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="16 3 21 3 21 8"/>
-                        <line x1="4" y1="20" x2="21" y2="3"/>
-                    </svg>
-                    Convert
-                </button>
-                <div class="convert-menu" id="convert-menu">
-                    <button class="convert-option" data-convert="quote">Quote</button>
-                    <button class="convert-option" data-convert="deposit">Deposit Invoice</button>
-                    <button class="convert-option" data-convert="final">Final Invoice</button>
-                    <button class="convert-option" data-convert="contract">Contract</button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- ═══════════════ DOCUMENT TYPE SELECTOR ═══════════════ -->
-    <nav id="doc-type-nav">
-        <button class="doc-tab active" data-type="quote">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-            Quote
-        </button>
-        <button class="doc-tab" data-type="deposit">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                <line x1="1" y1="10" x2="23" y2="10" />
-            </svg>
-            Deposit Invoice
-        </button>
-        <button class="doc-tab" data-type="final">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-            </svg>
-            Final Invoice
-        </button>
-        <button class="doc-tab" data-type="contract">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <path d="M9 15l2 2 4-4" />
-            </svg>
-            Contract
-        </button>
-    </nav>
-
-    <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
-    <main id="app-main">
-
-        <!-- ─────── LEFT: FORM ─────── -->
-        <section id="form-panel">
-            <form novalidate id="main-form">
-
-            <!-- Document Info -->
-            <fieldset class="form-section">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    Document Info
-                </legend>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="doc-number">Document #</label>
-                        <input type="text" id="doc-number" placeholder="PSP-Q-0001" />
-                    </div>
-                    <div class="form-group">
-                        <label for="doc-date">Date</label>
-                        <input type="date" id="doc-date" required aria-required="true" />
-                    </div>
-                </div>
-                <div class="form-row two-col" id="validity-row">
-                    <div class="form-group">
-                        <label for="doc-valid-until">Valid Until</label>
-                        <input type="date" id="doc-valid-until" />
-                    </div>
-                    <div class="form-group" id="quote-deposit-override-group">
-                        <label for="quote-deposit-override">Deposit Amount ($)</label>
-                        <input type="number" id="quote-deposit-override" placeholder="e.g. 2000" step="0.01" min="0" />
-                    </div>
-                </div>
-                <!-- Status + GST -->
-                <div class="form-row two-col" id="gst-row">
-                    <div class="form-group">
-                        <label class="toggle-label">
-                            <input type="checkbox" id="include-gst" checked />
-                            <span class="toggle-switch"></span>
-                            Include GST (10%)
-                        </label>
-                    </div>
-                    <div class="form-group" id="status-code-group">
-                        <label for="status-code">Status</label>
-                        <select id="status-code" class="status-code-select">
-                            <option value="B">B</option>
-                            <option value="L" selected>L</option>
-                            <option value="P">P</option>
-                            <option value="F">F</option>
-                            <option value="$">$</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="offbooks-group">
-                        <label class="toggle-label offbooks-toggle">
-                            <input type="checkbox" id="offbooks-flag" />
-                            <span class="toggle-switch"></span>
-                            <span class="offbooks-label">OB</span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Deposit invoice extra fields -->
-                <div class="form-row two-col" id="deposit-ref-row" style="display:none">
-                    <div class="form-group">
-                        <label for="deposit-quote-ref">Original Quote #</label>
-                        <input type="text" id="deposit-quote-ref" placeholder="PSP-Q-0001" />
-                    </div>
-                    <div class="form-group">
-                        <label for="deposit-amount-override">Deposit Amount ($)</label>
-                        <input type="number" id="deposit-amount-override" placeholder="Auto-calculated" step="0.01" />
-                    </div>
-                </div>
-                <!-- Final invoice extra fields -->
-                <div class="form-row two-col" id="final-ref-row" style="display:none">
-                    <div class="form-group">
-                        <label for="final-quote-ref">Original Quote #</label>
-                        <input type="text" id="final-quote-ref" placeholder="PSP-Q-0001" />
-                    </div>
-                    <div class="form-group">
-                        <label for="deposit-paid">Deposit Already Paid ($)</label>
-                        <input type="number" id="deposit-paid" value="0" step="0.01" />
-                    </div>
-                </div>
-                <!-- Paid status (final invoice only) -->
-                <div class="form-row two-col" id="paid-status-row" style="display:none">
-                    <div class="form-group">
-                        <label class="toggle-label">
-                            <input type="checkbox" id="mark-as-paid" />
-                            <span class="toggle-switch"></span>
-                            Mark as Paid
-                        </label>
-                    </div>
-                    <div class="form-group" id="paid-date-group" style="display:none">
-                        <label for="paid-date">Payment Date</label>
-                        <input type="date" id="paid-date" />
-                    </div>
-                </div>
-            </fieldset>
-
-            <!-- Client Details -->
-            <fieldset class="form-section">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    Client Details
-                </legend>
-                <div class="client-history-bar">
-                    <select id="client-history-select" aria-label="Load saved client">
-                        <option value="">Load saved client...</option>
-                    </select>
-                    <button type="button" id="btn-save-client" class="btn-save-client" title="Save client for reuse">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                            <polyline points="17 21 17 13 7 13 7 21"/>
-                            <polyline points="7 3 7 8 15 8"/>
-                        </svg>
-                        Save
-                    </button>
-                </div>
-                <div class="form-group">
-                    <label for="client-name">Full Name</label>
-                    <input type="text" id="client-name" placeholder="e.g. John Smith" required aria-required="true" autocomplete="name" aria-describedby="val-client-name" />
-                    <span class="validation-msg" id="val-client-name" role="alert" aria-live="polite">Client name is required</span>
-                </div>
-                <div class="form-group">
-                    <label for="client-address">Address</label>
-                    <input type="text" id="client-address" autocomplete="street-address"
-                        placeholder="e.g. 45 Ocean Drive, Scarborough WA 6019" />
-                </div>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="client-phone">Phone</label>
-                        <input type="tel" id="client-phone" placeholder="e.g. 0412 345 678" autocomplete="tel" />
-                    </div>
-                    <div class="form-group">
-                        <label for="client-email">Email</label>
-                        <input type="email" id="client-email" placeholder="e.g. john@email.com" autocomplete="email" />
-                    </div>
-                </div>
-            </fieldset>
-
-            <!-- Job Details -->
-            <fieldset class="form-section" id="job-details-section">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                    </svg>
-                    Job Details
-                </legend>
-                <div class="form-group">
-                    <label for="job-title">Job Title</label>
-                    <input type="text" id="job-title" placeholder="e.g. Steel Patio Installation" />
-                </div>
-                <div class="form-group">
-                    <label style="display: flex; justify-content: space-between; align-items: center;">
-                        <span for="job-site">Site Address</span>
-                        <label class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                            <input type="checkbox" id="sync-site-address" checked style="margin: 0; transform: scale(0.8);" />
-                            Same as Client Address
-                        </label>
-                    </label>
-                    <input type="text" id="job-site" placeholder="e.g. 45 Ocean Drive, Scarborough WA 6019" disabled style="opacity: 0.7; cursor: not-allowed;" />
-                </div>
-                <div class="form-group">
-                    <label for="scope-template">Scope Template</label>
-                    <select id="scope-template">
-                        <option value="">— Select a template (optional) —</option>
-                        <option value="skillion">Skillion Patio</option>
-                        <option value="gable">Gable Patio</option>
-                        <option value="flat">Flat Roof Patio</option>
-                        <option value="dutch-gable">Dutch Gable Patio</option>
-                        <option value="carport">Carport</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="job-description">Description / Scope of Works</label>
-                    <textarea id="job-description" rows="3"
-                        placeholder="e.g. Supply and install a 6m x 4m insulated steel patio with LED downlights..."></textarea>
-                </div>
-            </fieldset>
-
-            <!-- Council & Engineering -->
-            <fieldset class="form-section" id="council-section">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>
-                    </svg>
-                    Council & Engineering
-                </legend>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="council-drawings">Structural Drawings & Engineering</label>
-                        <select id="council-drawings">
-                            <option value="none">Not required</option>
-                            <option value="psp">PSP to arrange ($850)</option>
-                            <option value="client">Client to arrange</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="council-lodgement">Council Lodgement & Submission</label>
-                        <select id="council-lodgement">
-                            <option value="none">Not required</option>
-                            <option value="psp">PSP to handle ($250)</option>
-                            <option value="client">Client to self-submit (guided)</option>
-                        </select>
-                    </div>
-                </div>
-            </fieldset>
-
-            <!-- Contract Specifications (contract tab only) -->
-            <fieldset class="form-section" id="contract-specs-section" style="display:none">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <path d="M9 15l2 2 4-4" />
-                    </svg>
-                    Specifications
-                </legend>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="contract-structure">Structure Type</label>
-                        <input type="text" id="contract-structure" placeholder="e.g. Patio" />
-                    </div>
-                    <div class="form-group">
-                        <label for="contract-dimensions">Dimensions</label>
-                        <input type="text" id="contract-dimensions" placeholder="e.g. 6m x 4m (24 m²)" />
-                    </div>
-                </div>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="contract-material">Material</label>
-                        <input type="text" id="contract-material" placeholder="e.g. Steel & Colorbond" />
-                    </div>
-                    <div class="form-group">
-                        <label for="contract-colour">Colour / Finish</label>
-                        <input type="text" id="contract-colour" placeholder="e.g. Woodland Grey" />
-                    </div>
-                </div>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="contract-ground-prep">Ground Prep</label>
-                        <input type="text" id="contract-ground-prep" placeholder="e.g. Yes" />
-                    </div>
-                    <div class="form-group">
-                        <label for="contract-council">Council Approval</label>
-                        <input type="text" id="contract-council" placeholder="e.g. Yes — handled by Contractor" />
-                    </div>
-                </div>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="contract-est-start">Estimated Start</label>
-                        <input type="text" id="contract-est-start" placeholder="e.g. Within 2–3 weeks of deposit" />
-                    </div>
-                    <div class="form-group">
-                        <label for="contract-est-duration">Estimated Duration</label>
-                        <input type="text" id="contract-est-duration" placeholder="e.g. 2–3 working days" />
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="contract-warranty">Warranty Period</label>
-                    <input type="text" id="contract-warranty" value="10-year structural warranty" placeholder="e.g. 10-year structural warranty" />
-                </div>
-            </fieldset>
-
-            <!-- Contract Pricing (contract tab only) -->
-            <fieldset class="form-section" id="contract-pricing-section" style="display:none">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="1" x2="12" y2="23" />
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </svg>
-                    Pricing &amp; Payment
-                </legend>
-                <div class="form-row two-col" id="contract-link-row">
-                    <div class="form-group">
-                        <label class="toggle-label">
-                            <input type="checkbox" id="contract-link-lineitems" checked />
-                            <span class="toggle-switch"></span>
-                            Calculate from line items
-                        </label>
-                    </div>
-                </div>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="contract-total-price">Total Contract Price ($)</label>
-                        <input type="number" id="contract-total-price" placeholder="e.g. 8500" step="0.01" min="0" />
-                    </div>
-                    <div class="form-group">
-                        <label for="contract-deposit-amount">Deposit Amount ($)</label>
-                        <input type="number" id="contract-deposit-amount" placeholder="e.g. 2550" step="0.01" min="0" />
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="contract-payment-method">Payment Method</label>
-                    <input type="text" id="contract-payment-method" value="Bank Transfer" placeholder="e.g. Bank Transfer, Cash, Card" />
-                </div>
-            </fieldset>
-
-            <!-- Price Breakdown — auto-distribute total into line items -->
-            <fieldset class="form-section" id="price-breakdown-section">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </svg>
-                    Quick Price Breakdown
-                </legend>
-                <p class="form-hint">Enter the patio cost — council fees get added on top automatically.</p>
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="breakdown-total">Patio Cost (ex GST)</label>
-                        <div class="input-with-suffix">
-                            <span class="input-prefix">$</span>
-                            <input type="number" id="breakdown-total" placeholder="e.g. 8400" step="0.01" min="0" />
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="breakdown-style">Patio Style</label>
-                        <select id="breakdown-style">
-                            <option value="skillion">Skillion</option>
-                            <option value="gable">Gable</option>
-                            <option value="flat">Flat Roof</option>
-                            <option value="dutch-gable">Dutch Gable</option>
-                            <option value="carport">Carport</option>
-                        </select>
-                    </div>
-                </div>
-                <button type="button" id="btn-generate-breakdown" class="btn-generate-breakdown">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="16 3 21 3 21 8"/>
-                        <line x1="4" y1="20" x2="21" y2="3"/>
-                    </svg>
-                    Generate Line Items
-                </button>
-            </fieldset>
-
-            <!-- Line Items -->
-            <fieldset class="form-section" id="line-items-section">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="8" y1="6" x2="21" y2="6" />
-                        <line x1="8" y1="12" x2="21" y2="12" />
-                        <line x1="8" y1="18" x2="21" y2="18" />
-                        <line x1="3" y1="6" x2="3.01" y2="6" />
-                        <line x1="3" y1="12" x2="3.01" y2="12" />
-                        <line x1="3" y1="18" x2="3.01" y2="18" />
-                    </svg>
-                    Line Items
-                </legend>
-                <div id="line-items-container">
-                    <!-- Line items get added here by JS -->
-                </div>
-                <button type="button" id="btn-add-line" class="btn-add-line">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="16" />
-                        <line x1="8" y1="12" x2="16" y2="12" />
-                    </svg>
-                    Add Line Item
-                </button>
-                <span class="validation-msg" id="val-line-items">At least one line item with a description and price is required</span>
-            </fieldset>
-
-            <!-- Totals -->
-            <fieldset class="form-section totals-section" id="totals-section">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="1" x2="12" y2="23" />
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </svg>
-                    Totals
-                </legend>
-                <div class="totals-grid">
-                    <div class="total-row">
-                        <span>Subtotal (ex GST)</span>
-                        <span id="calc-subtotal" class="total-value">$0.00</span>
-                    </div>
-                    <div class="total-row">
-                        <span>GST (10%)</span>
-                        <span id="calc-gst" class="total-value">$0.00</span>
-                    </div>
-                    <div class="total-row total-row-grand">
-                        <span>Total (inc GST)</span>
-                        <span id="calc-total" class="total-value">$0.00</span>
-                    </div>
-                    <div class="total-row total-row-deposit" id="calc-deposit-row">
-                        <span>Deposit Required</span>
-                        <span id="calc-deposit" class="total-value">$0.00</span>
-                    </div>
-                    <div class="total-row total-row-balance" id="calc-balance-row" style="display:none">
-                        <span>Less: Deposit Paid</span>
-                        <span id="calc-deposit-paid" class="total-value">-$0.00</span>
-                    </div>
-                    <div class="total-row total-row-grand" id="calc-amount-due-row" style="display:none">
-                        <span>Amount Due</span>
-                        <span id="calc-amount-due" class="total-value">$0.00</span>
-                    </div>
-                </div>
-            </fieldset>
-
-            <!-- Notes & Terms -->
-            <fieldset class="form-section" id="notes-terms-section">
-                <legend>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Notes &amp; Terms
-                </legend>
-                <div class="form-group">
-                    <label for="doc-notes">Additional Notes</label>
-                    <textarea id="doc-notes" rows="2"
-                        placeholder="e.g. Materials: Colorbond Steel in Woodland Grey..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="doc-terms">Payment Terms</label>
-                    <textarea id="doc-terms" rows="3"></textarea>
-                </div>
-            </fieldset>
-
-            </form>
-        </section>
-
-        <!-- ─────── RIGHT: LIVE PREVIEW ─────── -->
-        <section id="preview-panel">
-            <div class="preview-toolbar">
-                <span class="preview-label">Live Preview</span>
-                <button id="btn-download-pdf" class="btn-primary" title="Download PDF">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    Download PDF
-                </button>
-            </div>
-            <div class="preview-scroll">
-                <div id="preview-document" class="document-paper">
-                    <!-- Rendered by JS -->
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- ═══════════════ MOBILE PREVIEW TOGGLE (mobile only) ═══════════════ -->
-    <button id="mobile-preview-toggle" aria-label="Toggle Preview">
-        <svg id="mobile-preview-icon-eye" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-        </svg>
-        <svg id="mobile-preview-icon-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-        <span id="mobile-preview-label">Preview</span>
-    </button>
-
-    <!-- ═══════════════ MOBILE PREVIEW DRAWER ═══════════════ -->
-    <div id="mobile-preview-drawer">
-        <div class="drawer-header">
-            <span class="preview-label">Live Preview</span>
-            <div class="drawer-actions">
-                <button id="btn-download-pdf-mobile" class="btn-primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Download PDF
-                </button>
-                <button id="mobile-drawer-close" aria-label="Close Preview">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <div class="drawer-scroll">
-            <div id="preview-document-mobile" class="document-paper">
-                <!-- Mirrored by JS -->
-            </div>
-        </div>
+  <!-- HEADER -->
+  <header id="app-header">
+    <div class="header-brand">
+      <img src="/logo.svg" alt="Perth Steel Patios" class="header-logo" />
+      <div>
+        <h1>Perth Steel Patios</h1>
+        <span class="header-sub">Document Generator</span>
+      </div>
     </div>
-    <div id="mobile-drawer-backdrop"></div>
+    <div class="header-actions">
+      <button id="btn-dev-mode" class="btn-ghost btn-dev" title="Toggle Dev Mode"><span class="dev-badge">DEV</span></button>
+      <button id="btn-new" class="btn-ghost" title="New Document">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        New
+      </button>
+      <div class="convert-dropdown">
+        <button id="btn-convert" class="btn-ghost" title="Convert document">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/></svg>
+          Convert
+        </button>
+        <div id="convert-menu" class="convert-menu">
+          <button class="convert-option" data-convert="quote">Quote</button>
+          <button class="convert-option" data-convert="deposit">Deposit Invoice</button>
+          <button class="convert-option" data-convert="final">Final Invoice</button>
+          <button class="convert-option" data-convert="contract">Contract</button>
+        </div>
+      </div>
+    </div>
+  </header>
 
-    <!-- Toast notifications -->
-    <div id="toast-container"></div>
+  <!-- DOCUMENT TYPE TABS -->
+  <nav id="doc-type-nav">
+    <button class="doc-tab active" data-type="quote">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Quote
+    </button>
+    <button class="doc-tab" data-type="deposit">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Deposit Invoice
+    </button>
+    <button class="doc-tab" data-type="final">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Final Invoice
+    </button>
+    <button class="doc-tab" data-type="contract">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+      Contract
+    </button>
+  </nav>
 
-    <script type="module" src="/src/main.js"></script>
+  <!-- MAIN LAYOUT -->
+  <main id="app-main">
+
+    <!-- LEFT: FORM -->
+    <section id="form-panel">
+      <form novalidate id="main-form">
+
+        <!-- Document Info -->
+        <fieldset class="form-section">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Document Info</legend>
+          <div class="form-row two-col">
+            <div class="form-group"><label for="field-docNumber">Document #</label><input type="text" id="field-docNumber" data-bind="docNumber" placeholder="PSP-Q-0001" /></div>
+            <div class="form-group"><label for="field-docDate">Date</label><input type="date" id="field-docDate" data-bind="docDate" /></div>
+          </div>
+          <div class="form-row two-col" id="validity-row">
+            <div class="form-group">
+              <label id="valid-until-label">Valid Until</label>
+              <select id="field-validityDays" data-bind="validityDays">
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+                <option value="14">14 days</option>
+                <option value="7">7 days</option>
+                <option value="custom">Custom date</option>
+              </select>
+              <input type="date" id="field-validUntil" data-bind="validUntil" class="validity-custom-date" style="display:none;margin-top:6px" />
+              <span class="validity-calc-date" id="validity-calc-display"></span>
+            </div>
+            <div class="form-group" id="deposit-fields">
+              <label class="toggle-label compact">
+                <input type="checkbox" data-bind="useFixedDeposit" />
+                <span class="toggle-switch small"></span>
+                Fixed deposit amount
+              </label>
+              <div class="form-group" style="margin-top:6px"><label for="field-depositPercent">Deposit %</label><input type="number" id="field-depositPercent" data-bind="depositPercent" value="30" min="0" max="100" step="5" /></div>
+              <div class="form-group" style="margin-top:6px;display:none"><label for="field-depositFixed">Deposit Amount ($)</label><input type="number" id="field-depositFixed" data-bind="depositFixed" placeholder="e.g. 2000" step="0.01" min="0" /></div>
+            </div>
+          </div>
+          <div class="form-row three-col" id="gst-row">
+            <div class="form-group"><label class="toggle-label"><input type="checkbox" data-bind="includeGst" checked /><span class="toggle-switch"></span> Include GST (10%)</label></div>
+            <div class="form-group" id="status-group"><label for="field-statusCode">Status</label><select id="field-statusCode" data-bind="statusCode"><option value="B">B</option><option value="L" selected>L</option><option value="P">P</option><option value="F">F</option><option value="$">$</option></select></div>
+            <div class="form-group" id="ob-group"><label class="toggle-label ob-toggle"><input type="checkbox" data-bind="offBooks" /><span class="toggle-switch"></span><span class="ob-label">OB</span></label></div>
+          </div>
+
+          <!-- Deposit invoice fields -->
+          <div class="form-row two-col" id="deposit-ref-row" style="display:none">
+            <div class="form-group"><label>Original Quote #</label><input type="text" data-bind="depositQuoteRef" placeholder="PSP-Q-0001" /></div>
+            <div class="form-group"><label>Deposit Amount ($)</label><input type="number" data-bind="depositAmountOverride" placeholder="Auto-calculated" step="0.01" /></div>
+          </div>
+          <!-- Final invoice fields -->
+          <div class="form-row two-col" id="final-ref-row" style="display:none">
+            <div class="form-group"><label>Original Quote #</label><input type="text" data-bind="finalQuoteRef" placeholder="PSP-Q-0001" /></div>
+            <div class="form-group"><label>Deposit Already Paid ($)</label><input type="number" data-bind="depositPaid" value="0" step="0.01" /></div>
+          </div>
+          <!-- Paid status -->
+          <div class="form-row two-col" id="paid-status-row" style="display:none">
+            <div class="form-group"><label class="toggle-label"><input type="checkbox" data-bind="markAsPaid" /><span class="toggle-switch"></span> Mark as Paid</label></div>
+            <div class="form-group" id="paid-date-group" style="display:none"><label>Payment Date</label><input type="date" data-bind="paidDate" /></div>
+          </div>
+        </fieldset>
+
+        <!-- Client Details -->
+        <fieldset class="form-section">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Client Details</legend>
+          <div class="client-bar">
+            <select id="client-select"><option value="">Load saved client...</option></select>
+            <button type="button" id="btn-save-client" class="btn-save-client" title="Save client">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save
+            </button>
+          </div>
+          <div class="form-group"><label for="field-clientName">Full Name</label><input type="text" id="field-clientName" data-bind="clientName" placeholder="e.g. John Smith" required /><span class="val-msg" id="val-name">Client name is required</span></div>
+          <div class="form-group"><label for="field-clientAddress">Address</label><input type="text" id="field-clientAddress" data-bind="clientAddress" placeholder="e.g. 45 Ocean Drive, Scarborough WA 6019" /></div>
+          <div class="form-row two-col">
+            <div class="form-group"><label for="field-clientPhone">Phone</label><input type="tel" id="field-clientPhone" data-bind="clientPhone" placeholder="0412 345 678" /></div>
+            <div class="form-group"><label for="field-clientEmail">Email</label><input type="email" id="field-clientEmail" data-bind="clientEmail" placeholder="john@email.com" /></div>
+          </div>
+        </fieldset>
+
+        <!-- Job Details -->
+        <fieldset class="form-section" id="job-section">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> Job Details</legend>
+          <div class="form-group"><label for="field-jobTitle">Job Title</label><input type="text" id="field-jobTitle" data-bind="jobTitle" placeholder="e.g. Steel Patio Installation" /></div>
+          <div class="form-group">
+            <div class="label-row">
+              <label for="field-jobSite">Site Address</label>
+              <label class="toggle-label compact inline">
+                <input type="checkbox" data-bind="syncSiteAddress" checked />
+                <span class="toggle-switch small"></span>
+                Same as client
+              </label>
+            </div>
+            <input type="text" id="field-jobSite" data-bind="jobSite" placeholder="e.g. 45 Ocean Drive, Scarborough WA 6019" disabled />
+          </div>
+          <div class="form-group"><label for="field-scopeTemplate">Scope Template</label><select id="field-scopeTemplate"><option value="">-- Select a template (optional) --</option><option value="skillion">Skillion Patio</option><option value="gable">Gable Patio</option><option value="flat">Flat Roof Patio</option><option value="dutch-gable">Dutch Gable Patio</option><option value="carport">Carport</option></select></div>
+          <div class="form-group"><label for="field-jobDescription">Description / Scope of Works</label><textarea id="field-jobDescription" data-bind="jobDescription" rows="3" placeholder="e.g. Supply and install a 6m x 4m insulated steel patio..."></textarea></div>
+        </fieldset>
+
+        <!-- Council & Engineering -->
+        <fieldset class="form-section" id="council-section">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg> Council & Engineering</legend>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Structural Drawings</label><select id="field-councilDrawings" data-bind="councilDrawings"><option value="none">Not required</option><option value="psp">PSP to arrange ($850)</option><option value="client">Client to arrange</option></select></div>
+            <div class="form-group"><label>Council Lodgement</label><select id="field-councilLodgement" data-bind="councilLodgement"><option value="none">Not required</option><option value="psp">PSP to handle ($250)</option><option value="client">Client to self-submit</option></select></div>
+          </div>
+        </fieldset>
+
+        <!-- Contract Specs (contract only) -->
+        <fieldset class="form-section" id="contract-specs" style="display:none">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg> Specifications</legend>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Structure Type</label><input type="text" data-bind="contractStructure" placeholder="e.g. Patio" /></div>
+            <div class="form-group"><label>Dimensions</label><input type="text" data-bind="contractDimensions" placeholder="e.g. 6m x 4m" /></div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Material</label><input type="text" data-bind="contractMaterial" placeholder="e.g. Steel & Colorbond" /></div>
+            <div class="form-group"><label>Colour / Finish</label><input type="text" data-bind="contractColour" placeholder="e.g. Woodland Grey" /></div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Ground Prep</label><input type="text" data-bind="contractGroundPrep" placeholder="e.g. Yes" /></div>
+            <div class="form-group"><label>Council Approval</label><input type="text" data-bind="contractCouncil" placeholder="e.g. Yes - handled by Contractor" /></div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Estimated Start</label><input type="text" data-bind="contractEstStart" placeholder="e.g. Within 2-3 weeks" /></div>
+            <div class="form-group"><label>Estimated Duration</label><input type="text" data-bind="contractEstDuration" placeholder="e.g. 2-3 working days" /></div>
+          </div>
+          <div class="form-group"><label>Warranty Period</label><input type="text" data-bind="contractWarranty" value="10-year structural warranty" /></div>
+        </fieldset>
+
+        <!-- Contract Pricing (contract only) -->
+        <fieldset class="form-section" id="contract-pricing" style="display:none">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Pricing & Payment</legend>
+          <div class="form-group"><label class="toggle-label"><input type="checkbox" data-bind="contractLinkLineItems" checked /><span class="toggle-switch"></span> Calculate from line items</label></div>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Total Contract Price ($)</label><input type="number" id="field-contractTotalPrice" data-bind="contractTotalPrice" placeholder="e.g. 8500" step="0.01" min="0" /></div>
+            <div class="form-group"><label>Deposit Amount ($)</label><input type="number" id="field-contractDepositAmount" data-bind="contractDepositAmount" placeholder="e.g. 2550" step="0.01" min="0" /></div>
+          </div>
+          <div class="form-group"><label>Payment Method</label><input type="text" data-bind="contractPaymentMethod" value="Bank Transfer" /></div>
+        </fieldset>
+
+        <!-- Price Breakdown -->
+        <fieldset class="form-section" id="breakdown-section">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Quick Price Breakdown</legend>
+          <p class="form-hint">Enter the patio cost - council fees added on top automatically.</p>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Patio Cost (ex GST)</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input type="number" data-bind="breakdownTotal" placeholder="e.g. 8400" step="0.01" min="0" class="has-prefix" /></div></div>
+            <div class="form-group"><label>Patio Style</label><select data-bind="breakdownStyle"><option value="skillion">Skillion</option><option value="gable">Gable</option><option value="flat">Flat Roof</option><option value="dutch-gable">Dutch Gable</option><option value="carport">Carport</option></select></div>
+          </div>
+          <button type="button" id="btn-breakdown" class="btn-accent btn-full">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/></svg>
+            Generate Line Items
+          </button>
+        </fieldset>
+
+        <!-- Line Items -->
+        <fieldset class="form-section" id="line-items-section">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Line Items</legend>
+          <div id="line-items-container"></div>
+          <button type="button" id="btn-add-line" class="btn-add-line">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Add Line Item
+          </button>
+        </fieldset>
+
+        <!-- Totals -->
+        <fieldset class="form-section totals-section" id="totals-section">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Totals</legend>
+          <div class="totals-grid">
+            <div class="total-row"><span>Subtotal (ex GST)</span><span id="calc-subtotal" class="total-val">$0.00</span></div>
+            <div class="total-row"><span>GST (10%)</span><span id="calc-gst" class="total-val">$0.00</span></div>
+            <div class="total-row total-grand"><span>Total (inc GST)</span><span id="calc-total" class="total-val">$0.00</span></div>
+            <div class="total-row total-deposit" id="calc-deposit-row"><span id="calc-deposit-label">Deposit Required (30%)</span><span id="calc-deposit" class="total-val">$0.00</span></div>
+            <div class="total-row total-balance" id="calc-balance-row" style="display:none"><span>Less: Deposit Paid</span><span id="calc-balance" class="total-val">-$0.00</span></div>
+            <div class="total-row total-due" id="calc-due-row" style="display:none"><span>Amount Due</span><span id="calc-due" class="total-val">$0.00</span></div>
+          </div>
+        </fieldset>
+
+        <!-- Notes & Terms -->
+        <fieldset class="form-section" id="notes-terms">
+          <legend><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Notes & Terms</legend>
+          <div class="form-group"><label>Additional Notes</label><textarea data-bind="notes" rows="2" placeholder="e.g. Materials: Colorbond in Woodland Grey..."></textarea></div>
+          <div class="form-group"><label>Payment Terms</label><textarea data-bind="terms" rows="3"></textarea></div>
+        </fieldset>
+
+      </form>
+    </section>
+
+    <!-- RIGHT: PREVIEW -->
+    <section id="preview-panel">
+      <div class="preview-toolbar">
+        <span class="preview-label">Live Preview</span>
+        <button id="btn-download" class="btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PDF
+        </button>
+      </div>
+      <div class="preview-scroll">
+        <div id="preview-content" class="document-paper"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MOBILE PREVIEW -->
+  <button id="mobile-preview-toggle" aria-label="Toggle Preview">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    <span>Preview</span>
+  </button>
+
+  <div id="mobile-drawer" class="mobile-drawer">
+    <div class="drawer-header">
+      <span class="preview-label">Live Preview</span>
+      <div class="drawer-actions">
+        <button id="btn-download-mobile" class="btn-primary btn-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+        <button id="mobile-drawer-close" class="btn-close" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="drawer-scroll">
+      <div id="preview-content-mobile" class="document-paper"></div>
+    </div>
+  </div>
+  <div id="mobile-backdrop" class="mobile-backdrop"></div>
+
+  <div id="toast-container"></div>
+
+  <script type="module" src="/src/main.js"></script>
 </body>
-
 </html>

@@ -1,17 +1,19 @@
 {
     "name": "psp-all-in-one-pdf-tool",
     "private": true,
-    "version": "1.0.0",
-    "description": "Perth Steel Patios — All in One PDF Tool (Quotes, Invoices, Contracts)",
+    "version": "2.0.0",
+    "description": "Perth Steel Patios — All in One Business Tool (Quotes, Invoices, Contracts)",
+    "type": "module",
     "scripts": {
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview"
     },
     "devDependencies": {
-        "vite": "^6.0.0"
+        "vite": "^6.4.1"
     },
     "dependencies": {
-        "@supabase/supabase-js": "^2.99.1"
+        "@supabase/supabase-js": "^2.49.4",
+        "pdfmake": "^0.2.15"
     }
 }
