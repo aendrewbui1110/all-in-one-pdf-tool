@@ -8,30 +8,34 @@ Andrew (Toby) Bui, sole director of Perth Steel Patios Pty Ltd (ACN 696 071 664)
 
 This is the **All-In-One Business Tool** for Perth Steel Patios. It started as a simple PDF document generator (quotes, invoices, contracts) and is being rebuilt into a comprehensive business tool that both I and my AI agents will use.
 
-### Current State (as of 2026-03-30 — v2 rebuild)
-- Vanilla JS + Vite single-page app (no frameworks)
-- Supabase backend (Sydney region) — clients, documents, counters, storage
-- Generates: Quotes, Deposit Invoices, Final Invoices, Contract Agreements
+### Current State (as of 2026-03-31 — v3 dashboard)
+- **Multi-page dashboard** with sidebar nav, hash-based router, lazy-loaded pages
+- **4 pages:** Dashboard (home), Documents (generator), Clients (CRM), Pipeline (stub)
+- Vanilla JS + Vite (no frameworks), Supabase backend (Sydney region)
+- Generates: Quotes, Contracts, Deposit Invoices, Final Invoices (tab order: Q > C > D > F)
 - **pdfmake** for vector PDFs (selectable text, small files, consistent rendering)
 - **Reactive store** — single state object drives preview, calculations, draft save
 - **data-bind** attributes for two-way form binding
+- **Sidebar nav** — collapsible on desktop, bottom tabs on mobile
+- **Client Manager** — add/edit/delete/search/sort clients, expandable detail rows
+- **Dashboard** — pipeline summary bar, active jobs, upcoming tasks, activity feed, orbital command widget
+- **Mapbox address autocomplete** on client address + site address (Perth-biased)
+- **Payment methods** — separate deposit/balance selections (Bank Transfer/Cash), conditional bank details on invoices
 - Dark theme UI with orange accent (#F7941D)
 - Live HTML preview (separate from PDF generation)
-- Deposit: both percentage (30%) AND fixed dollar amount via toggle
-- Valid Until: period selector (7/14/30/60/90 days or custom date)
-- Price breakdown: enter patio cost + style, auto-distributes across line items
-- Council & engineering: drawings ($850) / lodgement ($250) auto-add as line items
-- Off-books (OB) toggle: orange dot in PDF footer, creates ledger_private record
-- Status codes removed from UI — will be set by agents via email pipeline
+- Site address: "As per client address" when synced, autocomplete when different
+- Status codes and off-books removed from UI — agents manage these
 - PDF upload to Supabase Storage on download
 - Draft auto-save to localStorage via store subscription
 - Dev mode toggle (defaults ON) — skips all Supabase writes
 
 ### Where It's Heading
-- Split main.js into modules (currently 2,183 lines — biggest maintenance risk)
+- Pipeline kanban with 7 stages + sub-stages (Phase 2)
+- Pixel Agents office scene to replace Orbital Command (after OpenClaw agents are live)
 - Agent-ready API layer with scoped RLS policies per agent role
-- Multi-page dashboard on Vercel
 - Quote Calculator page (DEFERRED — waiting on finalised pricing)
+- Council tracking detail view (dedicated page with portal links, drafter details)
+- Weather widget + Google Calendar integration (future add-ons)
 - Eventually templated as "TradieClaw" for other tradies
 
 ## The Agent Ecosystem (Context)
@@ -100,26 +104,49 @@ No "PAID" stamp on documents — payment tracking is private between Andrew and 
 - **Backend:** Supabase (PostgreSQL, Auth, Storage, Edge Functions)
 - **PDF:** pdfmake (npm, vector output, bundled fonts)
 - **Hosting:** Vercel (planned)
-- **Env vars:** VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (in .env, git-ignored)
+- **Address:** Mapbox Search API v6 (Perth-biased autocomplete)
+- **Env vars:** VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_MAPBOX_TOKEN (in .env, git-ignored)
 
 ## File Structure
 
 ```
-├── index.html              (288 lines — semantic HTML, data-bind attributes)
+├── index.html              (app shell — sidebar + page containers + document generator HTML)
 ├── src/
-│   ├── main.js             (31 lines — entry point, initialisation)
-│   ├── store.js            (87 lines — reactive state store with pub/sub)
-│   ├── config.js           (121 lines — BUSINESS, DEFAULT_TERMS, SCOPE_TEMPLATES, PRESETS)
-│   ├── utils.js            (68 lines — escapeHtml, formatCurrency, formatDateDisplay, logo conversion)
-│   ├── calculations.js     (33 lines — totals, deposit, price distribution)
-│   ├── line-items.js       (103 lines — add/remove/render/sync, inline total updates)
-│   ├── preview.js          (350 lines — HTML preview for all doc types)
-│   ├── pdf.js              (554 lines — pdfmake vector PDF generation)
-│   ├── db.js               (208 lines — Supabase CRUD, doc numbers, clients)
-│   ├── draft.js            (43 lines — auto-save via store subscription)
-│   ├── ui.js               (438 lines — data-bind, event wiring, doc switching)
-│   ├── style.css           (397 lines — dark theme, orange accent, responsive)
-│   └── supabase.js         (12 lines — Supabase client config)
+│   ├── main.js             (bootstrap — registers pages, inits sidebar + router)
+│   ├── router.js           (hash-based router — store-driven view switching)
+│   ├── store.js            (reactive state store with pub/sub)
+│   ├── style.css           (global design system — dark theme, CSS variables)
+│   ├── shared/
+│   │   ├── config.js       (BUSINESS, DEFAULT_TERMS, SCOPE_TEMPLATES, PRESETS)
+│   │   ├── utils.js        (escapeHtml, formatCurrency, formatDateDisplay, logo conversion)
+│   │   ├── calculations.js (totals, deposit, price distribution)
+│   │   ├── db.js           (Supabase CRUD, doc numbers, clients, delete)
+│   │   ├── supabase.js     (Supabase client config)
+│   │   ├── toast.js        (toast notifications)
+│   │   ├── address-autocomplete.js  (Mapbox address autocomplete)
+│   │   └── address-autocomplete.css
+│   ├── components/
+│   │   ├── sidebar.js      (nav items, collapse/expand, mobile tabs)
+│   │   └── sidebar.css
+│   ├── pages/
+│   │   ├── dashboard/
+│   │   │   ├── dashboard-page.js    (pipeline bar, jobs, tasks, activity, orbital)
+│   │   │   ├── dashboard.css
+│   │   │   └── widgets/
+│   │   │       ├── orbital-command.js   (agent visualization — orbiting nodes)
+│   │   │       └── orbital-command.css
+│   │   ├── documents/
+│   │   │   ├── documents-page.js    (mount/unmount lifecycle)
+│   │   │   ├── documents-ui.js      (data-bind, event wiring, doc switching)
+│   │   │   ├── preview.js           (HTML preview for all doc types)
+│   │   │   ├── pdf.js               (pdfmake vector PDF generation)
+│   │   │   ├── line-items.js        (add/remove/render/sync)
+│   │   │   └── draft.js             (auto-save via store subscription)
+│   │   ├── clients/
+│   │   │   ├── clients-page.js      (CRUD, search, sort, delete, detail view)
+│   │   │   └── clients.css
+│   │   └── pipeline/
+│   │       └── pipeline-page.js     (placeholder — kanban in Phase 2)
 ├── public/
 │   ├── logo.svg            (Perth Steel Patios logo)
 │   └── load-job.html       (standalone job loader)
@@ -131,25 +158,40 @@ No "PAID" stamp on documents — payment tracking is private between Andrew and 
 │       ├── 002_schema_evolution.sql
 │       ├── 003_views.sql
 │       └── README.md
-├── .env                    (Supabase credentials — git-ignored)
+├── .env                    (Supabase + Mapbox credentials — git-ignored)
 ├── package.json            (Vite + @supabase/supabase-js + pdfmake)
-└── vite.config.js
+└── vite.config.js          (path aliases: @shared, @pages, @components)
 ```
 
 ## Build Plan Progress
 
 1. ✅ Phases 1-5: Rebrand, Supabase, documents, council, off-books, price breakdown
 2. ✅ **v2 rebuild (2026-03-30):** pdfmake PDFs, reactive store, data-bind, full audit fixes
-3. DEFERRED — Quote Calculator page (waiting on finalised pricing)
-4. NOT STARTED — Agent API layer (scoped RLS, Edge Functions, API docs)
-5. READY TO RUN — Migration SQL files in docs/migrations/ (run in Supabase SQL Editor)
+3. ✅ **v3 dashboard (2026-03-31):** multi-page shell, sidebar nav, client manager, address autocomplete
+4. DEFERRED — Quote Calculator page (waiting on finalised pricing)
+5. DEFERRED — Pipeline kanban (Phase 2 — after dashboard stabilizes)
+6. NOT STARTED — Agent API layer (scoped RLS, Edge Functions, API docs)
+7. READY TO RUN — Migration SQL files in docs/migrations/ (run in Supabase SQL Editor)
+8. PARKED — Pixel Agents office scene to replace Orbital Command (after OpenClaw agents are live)
 
-### v2 rebuild notes
-- Status codes removed from UI — agents will set status by monitoring email sends
+### v2 rebuild notes (2026-03-30)
 - html2pdf.js replaced with pdfmake — vector PDFs, no CDN dependency
 - Deposit % field restored alongside fixed amount option
 - Valid Until replaced with period selector (auto-calculates from doc date)
 - All critical bugs from production audit fixed (see commit c6278d5 for v1 snapshot)
+
+### v3 dashboard notes (2026-03-31)
+- Restructured from single-page to multi-page dashboard with sidebar nav + hash router
+- Files reorganised: shared/, pages/, components/ structure
+- statusCode and offBooks removed from UI — agents manage these
+- Payment method split into depositPaymentMethod + balancePaymentMethod (Bank Transfer/Cash)
+- Invoices conditionally show bank details or "Cash" based on payment method
+- Tab order changed: Quote > Contract > Deposit > Final (matches on-site workflow)
+- Site address shows "As per client address" when synced (no more duplicate)
+- Client manager: full CRUD with search, sort, delete, expandable detail rows
+- Mapbox address autocomplete on address fields (requires VITE_MAPBOX_TOKEN)
+- Orbital Command widget on dashboard (placeholder — will be replaced with Pixel Agents)
+- Pixel Agents repo cloned at C:\Users\aendr\Projects\pixel-agents\ for future use
 
 ## Patio Styles & Price Breakdown
 
