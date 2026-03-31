@@ -33,7 +33,7 @@
 /* Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 14px; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
 .skip-link:focus { position: fixed; top: 8px; left: 8px; z-index: 100000; width: auto; height: auto; padding: 8px 16px; margin: 0; overflow: visible; clip: auto; background: var(--accent); color: #000; font-weight: 600; border-radius: 4px; }
@@ -130,11 +130,6 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 .toggle-label input:checked + .toggle-switch::after { left: 21px; background: #fff; }
 .toggle-label input:checked + .toggle-switch.small::after { left: 16px; }
 
-/* ═══ Status & OB ═══ */
-#status-group { flex: 0 0 auto; max-width: 100px; }
-#status-group select { width: 70px; text-align: center; font-family: var(--font-heading); font-weight: 600; letter-spacing: 2px; }
-#ob-group { flex: 0 0 auto; max-width: 80px; display: flex; align-items: center; }
-.ob-label { font-family: var(--font-heading); font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); }
 
 /* ═══ Client Bar ═══ */
 .client-bar { display: flex; gap: 8px; margin-top: 12px; margin-bottom: 4px; }
@@ -260,7 +255,6 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 
 .doc-footer { border-top: 2px solid #F7941D; padding-top: 10px; margin-top: 20px; font-size: 8pt; color: #999; display: flex; justify-content: space-between; }
 .doc-footer-brand { font-family: 'Oswald', sans-serif; font-weight: 600; color: #F7941D; font-size: 9pt; }
-.ob-dot { color: #F7941D; font-size: 14pt; font-weight: 900; line-height: 0; vertical-align: super; margin-left: 1px; }
 
 .doc-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-family: 'Oswald', sans-serif; font-size: 80pt; font-weight: 700; text-transform: uppercase; letter-spacing: 15px; pointer-events: none; z-index: 5; }
 .paid-watermark { color: rgba(74,124,89,0.12); }

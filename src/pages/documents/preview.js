@@ -1,8 +1,8 @@
-import { BUSINESS } from './config.js';
-import { escapeHtml, formatCurrency, formatDateDisplay } from './utils.js';
-import { calculateTotals, calculateDeposit } from './calculations.js';
-import * as store from './store.js';
-import { debounce } from './utils.js';
+import { BUSINESS } from '../../shared/config.js';
+import { escapeHtml, formatCurrency, formatDateDisplay } from '../../shared/utils.js';
+import { calculateTotals, calculateDeposit } from '../../shared/calculations.js';
+import * as store from '../../store.js';
+import { debounce } from '../../shared/utils.js';
 
 function generateCouncilHTML(s, isContract = false) {
   if (s.councilDrawings === 'none' && s.councilLodgement === 'none') return '';
@@ -78,7 +78,7 @@ function generateQuoteHTML(s) {
 
     <div class="doc-addresses">
       <div class="doc-addr"><div class="doc-addr-label">Prepared For</div><div class="doc-addr-body"><strong>${escapeHtml(s.clientName) || 'Client Name'}</strong><br>${escapeHtml(s.clientAddress) || 'Address'}<br>${s.clientPhone ? 'Ph: ' + escapeHtml(s.clientPhone) + '<br>' : ''}${s.clientEmail ? escapeHtml(s.clientEmail) : ''}</div></div>
-      <div class="doc-addr"><div class="doc-addr-label">Site Address</div><div class="doc-addr-body">${escapeHtml(s.jobSite) || 'Same as above'}</div></div>
+      <div class="doc-addr"><div class="doc-addr-label">Site Address</div><div class="doc-addr-body">${s.jobSite && s.jobSite !== s.clientAddress ? escapeHtml(s.jobSite) : 'As per client address'}</div></div>
     </div>
 
     ${s.jobTitle || s.jobDescription ? `
@@ -113,7 +113,7 @@ function generateQuoteHTML(s) {
     </div>` : ''}
 
     <div class="doc-thankyou">Thank you for choosing <strong>${BUSINESS.name}</strong></div>
-    <div class="doc-footer"><span class="doc-footer-brand">${BUSINESS.name}</span><span>${BUSINESS.website}${s.offBooks ? '<span class="ob-dot">.</span>' : ''}</span></div>
+    <div class="doc-footer"><span class="doc-footer-brand">${BUSINESS.name}</span><span>${BUSINESS.website}</span></div>
     ${isExpired ? '<div class="doc-watermark expired-watermark">EXPIRED</div>' : ''}
   `;
 }
@@ -190,7 +190,7 @@ function generateInvoiceHTML(s, type) {
 
     <div class="doc-addresses">
       <div class="doc-addr"><div class="doc-addr-label">Bill To</div><div class="doc-addr-body"><strong>${escapeHtml(s.clientName) || 'Client Name'}</strong><br>${escapeHtml(s.clientAddress) || 'Address'}<br>${s.clientPhone ? 'Ph: ' + escapeHtml(s.clientPhone) + '<br>' : ''}${s.clientEmail ? escapeHtml(s.clientEmail) : ''}</div></div>
-      <div class="doc-addr"><div class="doc-addr-label">Site Address</div><div class="doc-addr-body">${escapeHtml(s.jobSite) || 'Same as above'}</div></div>
+      <div class="doc-addr"><div class="doc-addr-label">Site Address</div><div class="doc-addr-body">${s.jobSite && s.jobSite !== s.clientAddress ? escapeHtml(s.jobSite) : 'As per client address'}</div></div>
     </div>
 
     ${s.jobTitle || s.jobDescription ? `
@@ -206,23 +206,35 @@ function generateInvoiceHTML(s, type) {
 
     <div class="doc-totals"><div class="doc-totals-inner">${totalsHTML}</div></div>
 
-    <div class="doc-payment-box">
-      <div class="doc-section-title">Payment Details</div>
-      <div class="doc-payment-grid">
-        <span class="doc-pay-label">Bank:</span><span>${BUSINESS.bank.name}</span>
-        <span class="doc-pay-label">BSB:</span><span>${BUSINESS.bank.bsb}</span>
-        <span class="doc-pay-label">Account:</span><span>${BUSINESS.bank.accountNumber}</span>
-        <span class="doc-pay-label">Name:</span><span>${BUSINESS.bank.accountName}</span>
-        <span class="doc-pay-label">Reference:</span><span>${escapeHtml(s.docNumber)}</span>
-      </div>
-    </div>
+    ${(() => {
+      const method = isDeposit ? s.depositPaymentMethod : s.balancePaymentMethod;
+      if (method === 'cash') {
+        return `<div class="doc-payment-box">
+          <div class="doc-section-title">Payment Details</div>
+          <div class="doc-payment-grid">
+            <span class="doc-pay-label">Method:</span><span>Cash</span>
+            <span class="doc-pay-label">Reference:</span><span>${escapeHtml(s.docNumber)}</span>
+          </div>
+        </div>`;
+      }
+      return `<div class="doc-payment-box">
+        <div class="doc-section-title">Payment Details</div>
+        <div class="doc-payment-grid">
+          <span class="doc-pay-label">Bank:</span><span>${BUSINESS.bank.name}</span>
+          <span class="doc-pay-label">BSB:</span><span>${BUSINESS.bank.bsb}</span>
+          <span class="doc-pay-label">Account:</span><span>${BUSINESS.bank.accountNumber}</span>
+          <span class="doc-pay-label">Name:</span><span>${BUSINESS.bank.accountName}</span>
+          <span class="doc-pay-label">Reference:</span><span>${escapeHtml(s.docNumber)}</span>
+        </div>
+      </div>`;
+    })()}
 
     ${generateCouncilHTML(s)}
     ${s.notes ? `<div class="doc-notes-block"><div class="doc-section-title">Notes</div><div class="doc-notes-text">${escapeHtml(s.notes)}</div></div>` : ''}
     ${s.terms ? `<div class="doc-terms-block"><div class="doc-section-title">Terms & Conditions</div><div class="doc-terms-text">${escapeHtml(s.terms)}</div></div>` : ''}
 
     <div class="doc-thankyou">Thank you for choosing <strong>${BUSINESS.name}</strong></div>
-    <div class="doc-footer"><span class="doc-footer-brand">${BUSINESS.name}</span><span>${BUSINESS.website}${s.offBooks ? '<span class="ob-dot">.</span>' : ''}</span></div>
+    <div class="doc-footer"><span class="doc-footer-brand">${BUSINESS.name}</span><span>${BUSINESS.website}</span></div>
     ${isPaid ? `<div class="doc-watermark paid-watermark">PAID</div>${s.paidDate ? `<div class="doc-watermark-date">Paid: ${formatDateDisplay(s.paidDate)}</div>` : ''}` : ''}
   `;
 }
@@ -257,7 +269,7 @@ function generateContractHTML(s) {
 
     <div class="doc-addresses">
       <div class="doc-addr"><div class="doc-addr-label">Client</div><div class="doc-addr-body"><strong>${escapeHtml(s.clientName) || 'Client Name'}</strong><br>${escapeHtml(s.clientAddress) || 'Address'}<br>${s.clientPhone ? 'Ph: ' + escapeHtml(s.clientPhone) + '<br>' : ''}${s.clientEmail ? escapeHtml(s.clientEmail) : ''}</div></div>
-      <div class="doc-addr"><div class="doc-addr-label">Site Address</div><div class="doc-addr-body">${escapeHtml(s.jobSite) || 'Same as above'}</div></div>
+      <div class="doc-addr"><div class="doc-addr-label">Site Address</div><div class="doc-addr-body">${s.jobSite && s.jobSite !== s.clientAddress ? escapeHtml(s.jobSite) : 'As per client address'}</div></div>
     </div>
 
     <div class="contract-section"><div class="contract-section-title">1. Scope of Work</div><div class="contract-body">
@@ -282,7 +294,7 @@ function generateContractHTML(s) {
           <tr class="contract-total-row"><td>Total Contract Price</td><td>${formatCurrency(totalPrice)}</td></tr>
         </tbody>
       </table>
-      <p class="doc-fine-print">Payment Method: ${escapeHtml(s.contractPaymentMethod)} | Warranty activates upon full payment.</p>
+      <p class="doc-fine-print">Deposit: ${s.depositPaymentMethod === 'cash' ? 'Cash' : 'Bank Transfer'} | Balance: ${s.balancePaymentMethod === 'cash' ? 'Cash' : 'Bank Transfer'} | Warranty activates upon full payment.</p>
     </div></div>
 
     ${generateCouncilHTML(s, true)}
@@ -324,7 +336,7 @@ function generateContractHTML(s) {
     </div></div>
 
     <div class="doc-thankyou">Thank you for choosing <strong>${BUSINESS.name}</strong></div>
-    <div class="doc-footer"><span class="doc-footer-brand">${BUSINESS.name}</span><span>${BUSINESS.website}${s.offBooks ? '<span class="ob-dot">.</span>' : ''}</span></div>
+    <div class="doc-footer"><span class="doc-footer-brand">${BUSINESS.name}</span><span>${BUSINESS.website}</span></div>
   `;
 }
 

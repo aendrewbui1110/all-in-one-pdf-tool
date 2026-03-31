@@ -1,10 +1,10 @@
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import * as store from './store.js';
-import { BUSINESS } from './config.js';
-import { formatCurrency, formatDateDisplay, getLogoBase64 } from './utils.js';
-import { calculateTotals, calculateDeposit } from './calculations.js';
-import { claimNextDocNumber, saveDocument } from './db.js';
+import * as store from '../../store.js';
+import { BUSINESS } from '../../shared/config.js';
+import { formatCurrency, formatDateDisplay, getLogoBase64 } from '../../shared/utils.js';
+import { calculateTotals, calculateDeposit } from '../../shared/calculations.js';
+import { claimNextDocNumber, saveDocument } from '../../shared/db.js';
 
 // Register fonts
 if (pdfFonts.pdfMake) pdfMake.vfs = pdfFonts.pdfMake.vfs;
@@ -176,24 +176,33 @@ function totalsBlock(rows) {
   };
 }
 
-function paymentDetailsBlock(s) {
+function paymentDetailsBlock(s, docType) {
+  const method = docType === 'deposit' ? s.depositPaymentMethod : s.balancePaymentMethod;
+  const isCash = method === 'cash';
+
+  const labels = isCash
+    ? [{ text: 'Method:', fontSize: 8, color: GREY }, { text: 'Reference:', fontSize: 8, color: GREY }]
+    : [
+        { text: 'Bank:', fontSize: 8, color: GREY }, { text: 'BSB:', fontSize: 8, color: GREY },
+        { text: 'Account:', fontSize: 8, color: GREY }, { text: 'Name:', fontSize: 8, color: GREY },
+        { text: 'Reference:', fontSize: 8, color: GREY },
+      ];
+
+  const values = isCash
+    ? [{ text: 'Cash', fontSize: 8, bold: true }, { text: s.docNumber || '', fontSize: 8, bold: true }]
+    : [
+        { text: BUSINESS.bank.name, fontSize: 8, bold: true }, { text: BUSINESS.bank.bsb, fontSize: 8, bold: true },
+        { text: BUSINESS.bank.accountNumber, fontSize: 8, bold: true }, { text: BUSINESS.bank.accountName, fontSize: 8, bold: true },
+        { text: s.docNumber || '', fontSize: 8, bold: true },
+      ];
+
   return {
     stack: [
       { text: 'PAYMENT DETAILS', fontSize: 8, bold: true, color: ORANGE, margin: [0, 0, 0, 6] },
-      {
-        columns: [
-          { width: 60, stack: [
-            { text: 'Bank:', fontSize: 8, color: GREY }, { text: 'BSB:', fontSize: 8, color: GREY },
-            { text: 'Account:', fontSize: 8, color: GREY }, { text: 'Name:', fontSize: 8, color: GREY },
-            { text: 'Reference:', fontSize: 8, color: GREY },
-          ], lineHeight: 1.6 },
-          { width: '*', stack: [
-            { text: BUSINESS.bank.name, fontSize: 8, bold: true }, { text: BUSINESS.bank.bsb, fontSize: 8, bold: true },
-            { text: BUSINESS.bank.accountNumber, fontSize: 8, bold: true }, { text: BUSINESS.bank.accountName, fontSize: 8, bold: true },
-            { text: s.docNumber || '', fontSize: 8, bold: true },
-          ], lineHeight: 1.6 },
-        ],
-      },
+      { columns: [
+        { width: 60, stack: labels, lineHeight: 1.6 },
+        { width: '*', stack: values, lineHeight: 1.6 },
+      ] },
     ],
     fillColor: '#F7F5F2',
     margin: [0, 0, 0, 14],
@@ -321,7 +330,7 @@ function buildInvoiceDefinition(s, logo) {
     jobInfoBox(s),
     lineItemsTable(s),
     totalsBlock(totalsRows),
-    paymentDetailsBlock(s),
+    paymentDetailsBlock(s, s.docType),
     termsBlock(s.notes, 'Notes'),
     termsBlock(s.terms),
     thankYouBlock(),
@@ -395,7 +404,7 @@ function buildContractDefinition(s, logo) {
         margin: [0, 0, 0, 6],
         style: 'tableBody',
       },
-      { text: `Payment Method: ${s.contractPaymentMethod} | Warranty activates upon full payment.`, fontSize: 7, color: GREY },
+      { text: `Deposit: ${s.depositPaymentMethod === 'cash' ? 'Cash' : 'Bank Transfer'} | Balance: ${s.balancePaymentMethod === 'cash' ? 'Cash' : 'Bank Transfer'} | Warranty activates upon full payment.`, fontSize: 7, color: GREY },
     ]),
 
     contractSection(4, 'Variations', [{ text: 'Any change to the scope of work must be agreed to in writing. Variations may result in additional charges.', fontSize: 9, color: '#333', lineHeight: 1.5 }]),

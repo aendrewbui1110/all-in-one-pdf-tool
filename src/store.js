@@ -52,8 +52,6 @@ set({
   notes: '',
   terms: '',
   includeGst: true,
-  statusCode: 'L',
-  offBooks: false,
   devMode: localStorage.getItem('psp-dev-mode') !== 'false',
   lineItems: [],
   nextLineId: 1,
@@ -77,7 +75,8 @@ set({
   contractWarranty: '10-year structural warranty',
   contractTotalPrice: '',
   contractDepositAmount: '',
-  contractPaymentMethod: 'Bank Transfer',
+  depositPaymentMethod: 'bank_transfer',
+  balancePaymentMethod: 'bank_transfer',
   contractLinkLineItems: true,
   // Council
   councilDrawings: 'none',

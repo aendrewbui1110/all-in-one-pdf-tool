@@ -1,5 +1,5 @@
-import * as store from './store.js';
-import { debounce } from './utils.js';
+import * as store from '../../store.js';
+import { debounce } from '../../shared/utils.js';
 
 const DRAFT_KEY = 'psp-draft-v2';
 

@@ -1,24 +1,13 @@
-import * as store from './store.js';
-import { DEFAULT_TERMS, SCOPE_TEMPLATES, COUNCIL_DRAWINGS_PRICE, COUNCIL_LODGEMENT_PRICE } from './config.js';
-import { calculateTotals, calculateDeposit, distributePrice } from './calculations.js';
-import { formatCurrency, formatDateDisplay, today, daysFromNow } from './utils.js';
+import * as store from '../../store.js';
+import { DEFAULT_TERMS, SCOPE_TEMPLATES, COUNCIL_DRAWINGS_PRICE, COUNCIL_LODGEMENT_PRICE } from '../../shared/config.js';
+import { calculateTotals, calculateDeposit, distributePrice } from '../../shared/calculations.js';
+import { formatCurrency, formatDateDisplay, today, daysFromNow } from '../../shared/utils.js';
 import { addLineItem, syncCouncilLineItems, renderLineItems, setAllLineItems } from './line-items.js';
-import { peekNextDocNumber, fetchClients, saveClient, loadClientById } from './db.js';
+import { peekNextDocNumber, fetchClients, saveClient, loadClientById } from '../../shared/db.js';
 import { clearDraft, loadDraft, hasDraft } from './draft.js';
 import { downloadPDF } from './pdf.js';
-
-// Toast notifications
-export function showToast(message, type = 'success') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.classList.add('removing');
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-}
+import { showToast } from '../../shared/toast.js';
+import { attachAddressAutocomplete } from '../../shared/address-autocomplete.js';
 
 // Two-way data binding for form fields
 function bindFormFields() {
@@ -33,7 +22,7 @@ function bindFormFields() {
       else if (el.value !== String(val ?? '')) { el.value = val ?? ''; }
     });
 
-    // DOM -> Store — use 'change' for checkboxes and selects, 'input' for text/number
+    // DOM -> Store
     const isSelect = el.tagName === 'SELECT';
     const event = (el.type === 'checkbox' || isSelect) ? 'change' : 'input';
     el.addEventListener(event, () => {
@@ -56,7 +45,6 @@ function bindTotals() {
     document.getElementById('calc-gst').textContent = state.includeGst ? formatCurrency(gst) : 'N/A';
     document.getElementById('calc-total').textContent = formatCurrency(total);
 
-    // Deposit row
     const depRow = document.getElementById('calc-deposit-row');
     const depLabel = document.getElementById('calc-deposit-label');
     const depValue = document.getElementById('calc-deposit');
@@ -73,7 +61,6 @@ function bindTotals() {
       depRow.style.display = 'none';
     }
 
-    // Balance row (final invoice)
     const balRow = document.getElementById('calc-balance-row');
     const dueRow = document.getElementById('calc-due-row');
     if (state.docType === 'final') {
@@ -87,7 +74,6 @@ function bindTotals() {
       dueRow.style.display = 'none';
     }
 
-    // Contract pricing link
     if (state.contractLinkLineItems && state.docType === 'contract') {
       const totalEl = document.getElementById('field-contractTotalPrice');
       const depEl = document.getElementById('field-contractDepositAmount');
@@ -108,16 +94,13 @@ async function switchDocType(type) {
     store.set({ docType: type, terms: DEFAULT_TERMS[type] });
   });
 
-  // Update doc number
   const num = await peekNextDocNumber(type);
   store.set({ docNumber: num });
 
-  // Update tab UI
   document.querySelectorAll('.doc-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.type === type);
   });
 
-  // Show/hide sections
   const sections = {
     'validity-row': type !== 'contract',
     'deposit-fields': type === 'quote',
@@ -137,7 +120,6 @@ async function switchDocType(type) {
     if (el) el.style.display = show ? '' : 'none';
   });
 
-  // Label switching
   const validLabel = document.getElementById('valid-until-label');
   if (validLabel) validLabel.textContent = type === 'quote' ? 'Valid For' : 'Due In';
 }
@@ -176,14 +158,14 @@ async function newDocument() {
       clientName: '', clientAddress: '', clientPhone: '', clientEmail: '',
       jobTitle: '', jobSite: '', syncSiteAddress: true, scopeTemplate: '', jobDescription: '',
       notes: '', terms: DEFAULT_TERMS.quote,
-      includeGst: true, statusCode: 'L', offBooks: false,
+      includeGst: true,
       lineItems: [], nextLineId: 1,
       depositQuoteRef: '', depositAmountOverride: '',
       finalQuoteRef: '', depositPaid: 0, markAsPaid: false, paidDate: '',
       contractStructure: '', contractDimensions: '', contractMaterial: '', contractColour: '',
       contractGroundPrep: '', contractCouncil: '', contractEstStart: '', contractEstDuration: '',
       contractWarranty: '10-year structural warranty', contractTotalPrice: '', contractDepositAmount: '',
-      contractPaymentMethod: 'Bank Transfer', contractLinkLineItems: true,
+      depositPaymentMethod: 'bank_transfer', balancePaymentMethod: 'bank_transfer', contractLinkLineItems: true,
       councilDrawings: 'none', councilLodgement: 'none',
       breakdownTotal: '', breakdownStyle: 'skillion',
     };
@@ -227,7 +209,6 @@ function bindValidityCalc() {
       if (customDate) customDate.style.display = 'none';
       if (display) display.style.display = '';
 
-      // Calculate date from docDate + days
       const days = parseInt(state.validityDays) || 30;
       if (state.docDate) {
         const base = new Date(state.docDate + 'T00:00:00');
@@ -244,7 +225,7 @@ function bindValidityCalc() {
   });
 }
 
-// Site address sync — guarded to avoid infinite loop
+// Site address sync
 function bindSiteSync() {
   let lastSyncedAddress = '';
   store.subscribe(state => {
@@ -292,8 +273,7 @@ function bindMobileDrawer() {
   if (backdrop) backdrop.addEventListener('click', close);
 }
 
-export function initUI() {
-  // Bind form fields
+export function initDocumentsUI() {
   bindFormFields();
   bindTotals();
   bindValidityCalc();
@@ -305,7 +285,7 @@ export function initUI() {
     tab.addEventListener('click', () => switchDocType(tab.dataset.type));
   });
 
-  // Line items — only re-render when items are added/removed (not on value edits)
+  // Line items
   const liContainer = document.getElementById('line-items-container');
   let prevLineItemIds = '';
   store.subscribe(state => {
@@ -352,7 +332,7 @@ export function initUI() {
     else showToast(`Line items generated from $${total.toFixed(2)}`);
   });
 
-  // Council dropdowns — sync line items when council selections change
+  // Council sync
   let prevCouncil = '';
   store.subscribe(state => {
     const key = `${state.councilDrawings}|${state.councilLodgement}`;
@@ -399,6 +379,9 @@ export function initUI() {
     await populateClients();
     showToast(`Saved: ${s.clientName}`);
   });
+
+  // Refresh client list when dropdown is opened (catches clients added from other pages)
+  document.getElementById('client-select')?.addEventListener('focus', () => populateClients());
 
   document.getElementById('client-select')?.addEventListener('change', async (e) => {
     const id = e.target.value;
@@ -471,4 +454,24 @@ export function initUI() {
 
   // Initial population
   populateClients();
+
+  // Address autocomplete on client address field
+  const clientAddressInput = document.getElementById('field-clientAddress');
+  if (clientAddressInput) {
+    attachAddressAutocomplete(clientAddressInput, {
+      onSelect(address) {
+        store.set({ clientAddress: address });
+      },
+    });
+  }
+
+  // Address autocomplete on site address field
+  const siteAddressInput = document.getElementById('field-jobSite');
+  if (siteAddressInput) {
+    attachAddressAutocomplete(siteAddressInput, {
+      onSelect(address) {
+        store.set({ jobSite: address });
+      },
+    });
+  }
 }

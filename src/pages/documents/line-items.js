@@ -1,9 +1,9 @@
-import * as store from './store.js';
+import * as store from '../../store.js';
 import {
   COUNCIL_DRAWINGS_DESC, COUNCIL_LODGEMENT_DESC,
   COUNCIL_DRAWINGS_PRICE, COUNCIL_LODGEMENT_PRICE,
-} from './config.js';
-import { escapeHtml, formatCurrency } from './utils.js';
+} from '../../shared/config.js';
+import { escapeHtml, formatCurrency } from '../../shared/utils.js';
 
 export function addLineItem(data = {}) {
   const s = store.get();

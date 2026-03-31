@@ -1,30 +1,39 @@
 import './style.css';
+import './components/sidebar.css';
 import * as store from './store.js';
-import { today, daysFromNow } from './utils.js';
-import { DEFAULT_TERMS } from './config.js';
-import { peekNextDocNumber } from './db.js';
-import { addLineItem } from './line-items.js';
-import { initPreview } from './preview.js';
-import { initUI } from './ui.js';
-import './draft.js'; // registers auto-save subscriber
+import { registerPage, initRouter } from './router.js';
+import { initSidebar } from './components/sidebar.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Set initial date and terms — validUntil auto-calculates from validityDays
-  store.batch(() => {
-    store.set({
-      docDate: today(),
-      terms: DEFAULT_TERMS.quote,
-    });
+// Page modules
+import * as documentsPage from './pages/documents/documents-page.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Add currentView to store
+  store.set({ currentView: 'dashboard' });
+
+  // Register pages
+  registerPage('dashboard', {
+    mount() {
+      // Lazy-load dashboard
+      import('./pages/dashboard/dashboard-page.js').then(m => m.mount());
+    },
   });
 
-  // Get initial doc number
-  const docNumber = await peekNextDocNumber('quote');
-  store.set({ docNumber });
+  registerPage('documents', documentsPage);
 
-  // Add initial empty line item
-  addLineItem();
+  registerPage('clients', {
+    mount() {
+      import('./pages/clients/clients-page.js').then(m => m.mount());
+    },
+  });
 
-  // Initialize UI and preview
-  initUI();
-  initPreview();
+  registerPage('pipeline', {
+    mount() {
+      import('./pages/pipeline/pipeline-page.js').then(m => m.mount());
+    },
+  });
+
+  // Initialize shell
+  initSidebar();
+  initRouter();
 });

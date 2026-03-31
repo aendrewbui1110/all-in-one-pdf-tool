@@ -1,6 +1,6 @@
 import { supabase, configured } from './supabase.js';
 import { DOC_PREFIXES } from './config.js';
-import * as store from './store.js';
+import * as store from '../store.js';
 import { calculateTotals, calculateDeposit } from './calculations.js';
 
 function isDevMode() {
@@ -120,6 +120,22 @@ export async function loadClientById(clientId) {
   return data;
 }
 
+// Delete client
+export async function deleteClient(clientId) {
+  if (isDevMode()) {
+    const all = loadLocalClients();
+    // In dev mode, clientId is the name (no UUID). Match by id first, then name
+    const filtered = all.filter(c => {
+      const key = c.id ? String(c.id) : c.name;
+      return key !== String(clientId);
+    });
+    saveLocalClients(filtered);
+    return;
+  }
+  if (!configured) return;
+  await supabase.from('clients').delete().eq('id', clientId);
+}
+
 // Document save
 export async function saveDocument(docNumber, pdfBlob) {
   if (isDevMode()) return;
@@ -156,14 +172,11 @@ export async function saveDocument(docNumber, pdfBlob) {
     pdfUrl = data?.path || null;
   }
 
-  const statusMap = { B: 'browsing', L: 'locked', P: 'in_progress', F: 'finished', $: 'paid' };
-
   const { error } = await supabase.from('documents').insert({
     doc_number: docNumber,
     doc_type: s.docType,
     client_id: clientId,
-    status: statusMap[s.statusCode] || 'sent',
-    status_code: s.statusCode,
+    status: 'sent',
     doc_date: s.docDate || null,
     valid_until: s.validUntil || null,
     subtotal, gst, total,
@@ -173,23 +186,9 @@ export async function saveDocument(docNumber, pdfBlob) {
     pdf_url: pdfUrl,
     council_drawings: s.councilDrawings,
     council_lodgement: s.councilLodgement,
-    off_books: s.offBooks,
   });
 
   if (error) throw new Error(`Document save failed: ${error.message}`);
-
-  // Off-books ledger entry
-  if (s.offBooks) {
-    const { data: doc } = await supabase.from('documents').select('id').eq('doc_number', docNumber).single();
-    if (doc) {
-      await supabase.from('ledger_private').insert({
-        document_id: doc.id,
-        internal_status: s.statusCode,
-        exclude_from_accountant: true,
-        notes: 'Flagged as off-books at creation',
-      });
-    }
-  }
 }
 
 // Load past documents
